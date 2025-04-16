@@ -1,6 +1,10 @@
 import { Socket } from "phoenix";
 
-let socket = new Socket("/socket", { params: { token: window.userToken } });
+let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
+let token = window.userToken;
+console.log("user login with token ", csrfToken);
+console.log("user login with window token ", token);
+let socket = new Socket("/socket", { params: { token: token } });
 socket.connect();
 
 let channel = socket.channel("room:lobby", {});
