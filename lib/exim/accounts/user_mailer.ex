@@ -1,3 +1,3 @@
 defmodule Exim.Mailer do
-    use Swoosh.Mailer, otp_app: :exim
+  use Swoosh.Mailer, otp_app: :exim
 end
