@@ -1,0 +1,51 @@
+# 消息系统
+
+## 长连接（双向消息通信）
+
+项目会采用不同的接入方式，可以有以下的方式
+
+* TCP(TLS)
+* WebSocket(ws/wss)
+* longpoll
+
+接入的方式不同，具体的实现细节可能也是不一样的
+
+<!-- livebook:{"branch_parent_index":0} -->
+
+## websocket作为传输层
+
+此处使用的Phoenix的socket实现，作为底层的实现
+
+<!-- livebook:{"break_markdown":true} -->
+
+<!-- Learn more at https://mermaid-js.github.io/mermaid -->
+
+```mermaid
+sequenceDiagram
+    IMClient->>PhoenixClient: init connection
+    PhoenixClient->>PhoenixServer: init server connection state
+    PhoenixServer->>IMServer: login IM
+    IMServer-->>PhoenixServer: give auth result
+    PhoenixServer-->>PhoenixClient: return result?
+    PhoenixClient-->>IMClient: get login result
+```
+
+```elixir
+
+```
+
+## QA
+
+### 心跳为什么通常由客户端保持?
+
+It is useful that the client manages the heartbeat rather than the server. If the
+  server is in charge of sending pings to a client, then the server is aware of the
+  connectivity problem but cannot establish a new connection to the client. If a
+  connectivity problem is detected by the client via its ping request, the client can
+  quickly attempt to reconnect and establish the connection again.
+
+客户端来维持心跳，能够在断开的情况下进行重试操作，否则服务端维护的话，仅仅能做的就是断开连接。
+
+**特定场景可能需要双向**
+
+特定的浏览器存在网页在前台，但是前台程序被浏览器挂起的情况，不允许计时器的执行，这种情况就需要同时激活服务端的心跳，定期通过远端来激活当前的网页。
