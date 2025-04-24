@@ -15,7 +15,21 @@ defmodule Exim.Application do
     ]
 
     children = [
+      {Horde.Registry,
+       [
+         name: Exim.PubSub.Pipeline.PipelineRegistry,
+         members: :auto,
+         keys: :unique
+       ]},
+      {Horde.DynamicSupervisor,
+       [
+         name: Exim.PubSub.Pipeline.PipelineSupervisor,
+         members: :auto,
+         strategy: :one_for_one,
+         distribution_strategy: Horde.UniformQuorumDistribution
+       ]},
       {Cluster.Supervisor, [topologies, [name: Exim.ClusterSupervisor]]},
+      {Exim.PubSub.PipelineManager, []},
       EximWeb.Telemetry,
       Exim.Repo,
       {Phoenix.PubSub, name: Exim.PubSub},

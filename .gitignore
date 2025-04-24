@@ -34,3 +34,8 @@ exim-*.tar
 # In case you use Node.js/npm, you want to ignore these.
 npm-debug.log
 /assets/node_modules/
+
+# Ignore the mix generated assets
+/priv/static/favicon*
+/priv/static/images/logo*
+/priv/static/robots*

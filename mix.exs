@@ -58,7 +58,9 @@ defmodule Exim.MixProject do
       {:libcluster, "~> 3.5"},
       {:bandit, "~> 1.5"},
       {:swoosh, "~> 1.4"},
-      {:hackney, "~> 1.9"}
+      {:hackney, "~> 1.9"},
+      {:broadway_kafka, "~> 0.4.4"},
+      {:horde, "~> 0.9.0"}
     ]
   end
 
