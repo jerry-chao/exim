@@ -7,10 +7,17 @@ defmodule Exim.Application do
 
   @impl true
   def start(_type, _args) do
+    topologies = [
+      example: [
+        strategy: Cluster.Strategy.Epmd,
+        config: [hosts: [:"exim@127.0.0.1"]]
+      ]
+    ]
+
     children = [
+      {Cluster.Supervisor, [topologies, [name: Exim.ClusterSupervisor]]},
       EximWeb.Telemetry,
       Exim.Repo,
-      {DNSCluster, query: Application.get_env(:exim, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Exim.PubSub},
       # Start a worker by calling: Exim.Worker.start_link(arg)
       # {Exim.Worker, arg},
