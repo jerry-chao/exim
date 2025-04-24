@@ -10,5 +10,9 @@ config :exim, EximWeb.Endpoint, cache_static_manifest: "priv/static/cache_manife
 # Do not print debug messages in production
 config :logger, level: :info
 
+config :exim,
+  kafka_hosts: [localhost: 9092],
+  kafka_topics: ["exim-auth"]
+
 # Runtime production configuration, including reading
 # of environment variables, is done on config/runtime.exs.

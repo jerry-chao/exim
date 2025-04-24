@@ -10,6 +10,10 @@ config :exim, Exim.Repo,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10
 
+config :exim,
+  kafka_hosts: [localhost: 9092],
+  kafka_topics: ["test"]
+
 # For development, we disable any cache and enable
 # debugging and code reloading.
 #

@@ -25,21 +25,14 @@ defmodule Exim.PubSub.Pipeline do
           BroadwayKafka.Producer,
           [
             hosts: [localhost: 9092],
-            group_id: "group_1",
-            topics: ["test"]
+            group_id: "exim",
+            topics: ["exim-auth"]
           ]
         },
         concurrency: 1
       ],
       processors: [
         default: [
-          concurrency: 1
-        ]
-      ],
-      batchers: [
-        default: [
-          batch_size: 100,
-          batch_timeout: 200,
           concurrency: 1
         ]
       ]
@@ -62,30 +55,24 @@ defmodule Exim.PubSub.Pipeline do
 
   @impl true
   def handle_message(_, message, _) do
-    message
-    |> Message.update_data(&process_data/1)
-  end
+    Logger.info("handle message, #{inspect(message)}")
 
-  @impl true
-  def handle_batch(_, messages, _, _) do
-    case publish_to_pubsub(messages) do
+    case publish_to_pubsub(Jason.decode!(message.data)) do
       :ok ->
-        messages
+        message
 
       {:error, reason} ->
-        # Mark messages as failed
-        Enum.map(messages, &Message.failed(&1, reason))
+        Message.failed(message, reason)
     end
   end
 
-  defp process_data(data) do
-    # Transform message data as needed
-    data
+  defp publish_to_pubsub(%{"method" => "auth"} = message) do
+    response = message |> Map.put("topic", "exim-auth") |> Map.put("method", "result")
+    Exim.PubSub.Response.response(response)
   end
 
-  defp publish_to_pubsub(messages) do
-    Logger.info(
-      "Publishing messages to PubSub, #{length(messages)} messages, #{inspect(messages)}"
-    )
+  defp publish_to_pubsub(message) do
+    Logger.info("handle unknown message: #{inspect(message)}")
+    :ok
   end
 end

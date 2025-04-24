@@ -1,0 +1,89 @@
+# PubSub
+
+## Request-Response场景
+
+<!-- Learn more at https://mermaid-js.github.io/mermaid -->
+
+事件发起者明确需要知道请求的结果
+
+```mermaid
+sequenceDiagram
+    Caller->>+Server: send Request Body?
+    Server->>-Caller: reply Response
+
+```
+
+采用PubSub的方式来实现这种场景
+
+<!-- livebook:{"break_markdown":true} -->
+
+### 方案1： 规则topic的方式
+
+请求者发送请求到test主题，服务提供者消费到对应的请求后，处理相应的逻辑，并且将处理结果发送到test-response中
+
+```mermaid
+sequenceDiagram
+    Caller->>+MQ: send Request Body to test topic
+    MQ->>+Server: consume Request Body
+    Server->>Server: process the request and generate response
+    Server->>-MQ: send response to test-response
+    MQ->>-Caller: consume the response
+```
+
+<!-- livebook:{"break_markdown":true} -->
+
+### 方案2： 请求中带有response-topic的设定
+
+请求者发送请求到test主题，并且带上response-topic=test2，服务提供者消费到对应的test的主题后，处理相应的逻辑，并且将结果写入到test2中。
+
+```mermaid
+sequenceDiagram
+    Caller->>+MQ: send Request Body(response-topic=test2) to test topic
+    MQ->>+Server: consume Request Body
+    Server->>Server: process the request and generate response
+    Server->>-MQ: send response to test2
+    MQ->>-Caller: consume the response
+```
+
+<!-- livebook:{"break_markdown":true} -->
+
+### 以下的示例采用JSON RPC的格式
+
+#### 登录Auth
+
+1. 鉴权请求
+
+```
+{
+  "jsonrpc": "2.0",
+  "method": "auth",
+  "params": {
+    "uid": "zhangchao",
+    "token": "123456"
+  },
+  "id": 1
+}
+```
+
+1. 鉴权返回
+
+```
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "status": "true",
+    "token": "huanxin123456"
+  },
+  "id": 1
+}
+```
+
+#### 消息合法性检查
+
+#### 加入聊天室
+
+#### 发送消息
+
+```elixir
+
+```

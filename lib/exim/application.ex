@@ -42,7 +42,23 @@ defmodule Exim.Application do
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Exim.Supervisor]
-    Supervisor.start_link(children, opts)
+    appSupervisor = Supervisor.start_link(children, opts)
+    start_request()
+    start_broadway()
+    appSupervisor
+  end
+
+  def start_request() do
+    Enum.each(Application.get_env(:exim, :kafka_topics, []), fn topic ->
+      Exim.PubSub.Request.start_client(topic)
+    end)
+  end
+
+  def start_broadway() do
+    Enum.each(Application.get_env(:exim, :kafka_topics, []), fn topic ->
+      Exim.PubSub.PipelineManager.add_queue(topic)
+      Exim.PubSub.Response.start_client(topic)
+    end)
   end
 
   # Tell Phoenix to update the endpoint configuration
