@@ -1,5 +1,6 @@
 defmodule Exim.PubSub.Request do
   alias Ecto.UUID
+  alias Phoenix.PubSub
 
   require Logger
 
@@ -20,7 +21,15 @@ defmodule Exim.PubSub.Request do
       key: uid
     }
 
-    request(auth_request)
+    request_id = request(auth_request)
+    # sub the request id
+    PubSub.subscribe(Exim.PubSub, request_id)
+    # wait for response
+    receive do
+      response ->
+        Logger.info("Received response: #{inspect(response)}")
+        response
+    end
   end
 
   def request(request) do
@@ -36,5 +45,7 @@ defmodule Exim.PubSub.Request do
       Map.get(request, :key, ""),
       Jason.encode!(request)
     )
+
+    request.id
   end
 end

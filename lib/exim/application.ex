@@ -56,7 +56,10 @@ defmodule Exim.Application do
 
   def start_broadway() do
     Enum.each(Application.get_env(:exim, :kafka_topics, []), fn topic ->
+      # add consumer for request
       Exim.PubSub.PipelineManager.add_queue(topic)
+      # add consumer for response
+      Exim.PubSub.PipelineManager.add_queue(Exim.PubSub.Response.response_topic(topic))
       Exim.PubSub.Response.start_client(topic)
     end)
   end

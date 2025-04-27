@@ -2,6 +2,7 @@ defmodule Exim.PubSub.Pipeline do
   use Broadway
 
   alias Broadway.Message
+  alias Phoenix.PubSub
   require Logger
 
   def child_spec(opts) do
@@ -26,7 +27,7 @@ defmodule Exim.PubSub.Pipeline do
           [
             hosts: [localhost: 9092],
             group_id: "exim",
-            topics: ["exim-auth"]
+            topics: [queue_name]
           ]
         },
         concurrency: 1
@@ -57,7 +58,7 @@ defmodule Exim.PubSub.Pipeline do
   def handle_message(_, message, _) do
     Logger.info("handle message, #{inspect(message)}")
 
-    case publish_to_pubsub(Jason.decode!(message.data)) do
+    case handle_message_internal(Jason.decode!(message.data)) do
       :ok ->
         message
 
@@ -66,12 +67,23 @@ defmodule Exim.PubSub.Pipeline do
     end
   end
 
-  defp publish_to_pubsub(%{"method" => "auth"} = message) do
+  # auth valid the auth request and give auth result to response topic
+  # 1. valid the token
+  # 2. send result to response topic
+  defp handle_message_internal(%{"method" => "auth"} = message) do
+    Logger.info("handle auth request, #{inspect(message)}")
     response = message |> Map.put("topic", "exim-auth") |> Map.put("method", "result")
     Exim.PubSub.Response.response(response)
   end
 
-  defp publish_to_pubsub(message) do
+  # handle auth response
+  # send result to request process
+  defp handle_message_internal(%{"method" => "result", "id" => id} = message) do
+    Logger.info("handle auth response, #{inspect(message)}")
+    PubSub.broadcast(Exim.PubSub, id, message)
+  end
+
+  defp handle_message_internal(message) do
     Logger.info("handle unknown message: #{inspect(message)}")
     :ok
   end
