@@ -48,19 +48,23 @@ defmodule Exim.Application do
     appSupervisor
   end
 
+  # start request kafka client
   def start_request() do
     Enum.each(Application.get_env(:exim, :kafka_topics, []), fn topic ->
+      # start callerService kafka client
       Exim.PubSub.Request.start_client(topic)
     end)
   end
 
+  # start kafka consume and response kafka client
   def start_broadway() do
     Enum.each(Application.get_env(:exim, :kafka_topics, []), fn topic ->
       # add consumer for request
       Exim.PubSub.PipelineManager.add_queue(topic)
+      # start authService kafka client
+      Exim.PubSub.Response.start_client(topic)
       # add consumer for response
       Exim.PubSub.PipelineManager.add_queue(Exim.PubSub.Response.response_topic(topic))
-      Exim.PubSub.Response.start_client(topic)
     end)
   end
 

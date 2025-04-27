@@ -18,12 +18,13 @@ defmodule Exim.PubSub.Request do
         uid: uid,
         token: token
       },
-      key: uid
+      key: uid,
+      id: UUID.generate()
     }
 
-    request_id = request(auth_request)
     # sub the request id
-    PubSub.subscribe(Exim.PubSub, request_id)
+    PubSub.subscribe(Exim.PubSub, auth_request.id)
+    request(auth_request)
     # wait for response
     receive do
       response ->
@@ -35,7 +36,7 @@ defmodule Exim.PubSub.Request do
   def request(request) do
     topic = "exim-" <> Map.get(request, :method)
     client_id = topic |> String.to_atom()
-    request = request |> Map.put(:jsonrpc, "2.0") |> Map.put(:id, UUID.generate())
+    request = request |> Map.put(:jsonrpc, "2.0")
     Logger.info("Sending request to topic #{topic}")
 
     :brod.produce_sync(

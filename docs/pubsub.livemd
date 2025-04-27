@@ -78,12 +78,154 @@ sequenceDiagram
 }
 ```
 
-#### 消息合法性检查
+#### 验证细节
+
+* broadway 流式处理数据
+* pubsub 返回数据给发起方
+
+#### 鉴权请求的时序图
+
+<!-- livebook:{"break_markdown":true} -->
+
+<!-- Learn more at https://mermaid-js.github.io/mermaid -->
+
+```mermaid
+sequenceDiagram
+    Caller->>+CallerService: request auth request 
+    CallerService->>+MQ: send Auth(uid,pwd) to exim-auth
+    MQ->>+AuthService: consume Auth(uid,pwd) from exim-auth
+    AuthService->>AuthService: valid the Auth(uid,pwd)
+    AuthService->>-MQ: send AuthResult(success/fail) to exim-auth-response
+    MQ->>-CallerService: consume AuthResult(success/fail) from exim-auth-response
+    CallerService->>-Caller: consume the response
+```
+
+```elixir
+# 测试用例
+
+result = Exim.PubSub.Request.auth("zhangchao", "123456")
+```
+
+```elixir
+# 由于演示的原因，所以没有进行分拆，CallerService和AuthService
+# 1. 启动请求的kafka client
+# 2. 启动response的消费请求的逻辑
+# 3. 启动AuthService写入回应的kafka client
+# 4. 启动CallerService消费请求结果的逻辑
+
+# start request kafka client
+def start_request() do
+  Enum.each(Application.get_env(:exim, :kafka_topics, []), fn topic ->
+    # start callerService kafka client
+    Exim.PubSub.Request.start_client(topic)
+  end)
+end
+
+# start kafka consume and response kafka client
+def start_broadway() do
+  Enum.each(Application.get_env(:exim, :kafka_topics, []), fn topic ->
+    # add consumer for request
+    Exim.PubSub.PipelineManager.add_queue(topic)
+    # start authService kafka client
+    Exim.PubSub.Response.start_client(topic)
+    # add consumer for response
+    Exim.PubSub.PipelineManager.add_queue(Exim.PubSub.Response.response_topic(topic))
+  end)
+end
+```
+
+```elixir
+# 请求的逻辑
+# 1. 订阅请求ID
+# 2. 发送请求到MQ
+# 3. AuthService消费到请求
+# 4. AuthService进行鉴权逻辑
+# 5. AuthService写入鉴权结果
+# 6. CallerService消费到鉴权结果
+# 7. CallerService将结果通知给Caller
+
+def auth(uid, token) do
+  auth_request = %{
+    method: "auth",
+    params: %{
+      uid: uid,
+      token: token
+    },
+    key: uid,
+    id: UUID.generate()
+  }
+
+  # sub the request id
+  PubSub.subscribe(Exim.PubSub, auth_request.id)
+  request(auth_request)
+  # wait for response
+  receive do
+    response ->
+      Logger.info("Received response: #{inspect(response)}")
+      response
+  end
+end
+
+
+# auth valid the auth request and give auth result to response topic
+# 1. valid the token
+# 2. send result to response topic
+defp handle_message_internal(%{"method" => "auth"} = message) do
+  Logger.info("handle auth request, #{inspect(message)}")
+  response = message |> Map.put("topic", "exim-auth") |> Map.put("method", "result")
+  Exim.PubSub.Response.response(response)
+end
+
+# handle auth response
+# send result to request process
+defp handle_message_internal(%{"method" => "result", "id" => id} = message) do
+  Logger.info("handle auth response, #{inspect(message)}")
+  PubSub.broadcast(Exim.PubSub, id, message)
+end
+```
 
 #### 加入聊天室
 
-#### 发送消息
+<!-- livebook:{"break_markdown":true} -->
 
-```elixir
+#### 发送消息（长连接）
 
+1. 基础参数的检测
+
+   比如消息是否在同一个appkey内，消息是否有from，有to字段等
+
+2. 业务合法性检查
+
+   * 客户业务逻辑判定
+   * 敏感词的检测
+   * 反垃圾的检测
+   * 群组聊天室等业务场景的检测
+   * 好友黑名单的检测
+
+3. 落盘消息
+
+4. 给消息发送者返回发送成功
+
+5. 路由消息的接收者，投递给消息的接收者
+
+6. 客户端确认消息接收成功
+
+<!-- livebook:{"break_markdown":true} -->
+
+<!-- Learn more at https://mermaid-js.github.io/mermaid -->
+
+```mermaid
+sequenceDiagram
+    Sender->>+AgentService: receive client message 
+    AgentService->>+MQ: pub message to (valid-msg-topic)
+    MQ->>+ValidService: consume message from valid-msg-topic
+    ValidService->>ValidService: valid message
+    ValidService->>+MQ: send valided msg to (valided-msg-topic)
+    MQ->>ReplyService: send reply to Sender
+    ReplyService->>AgentService: route send_ack to ReceiveService
+    AgentService->>-Sender: reply send_ack to Sender
+    MQ->>RouterService: route message to Receiver
+    RouterService->>AgentService: router msg to Receiver's AgentService
+    AgentService->>Receiver: send message to receiver
+    Receiver->>AgentService: ack message
 ```
