@@ -215,17 +215,111 @@ end
 <!-- Learn more at https://mermaid-js.github.io/mermaid -->
 
 ```mermaid
+flowchart LR
+    Sender-->|基础检查|BasicCheck
+    BasicCheck-->|持久化数据|Persistent
+    Persistent-->|路由消息|RouterService
+    RouterService-->|推送消息|Receiver
+```
+
+<!-- livebook:{"break_markdown":true} -->
+
+### 异步MQ的topic的设计-服务级topic版本
+
+该方案引入了AgentService，ValidService，ReplyService进行，服务中间采用的固定的topic队列进行消费
+
+1. 用户sender登录到AgentService
+2. 用户订阅topic用户级别，比如subscribe /sender/android
+3. sender发送消息到AgentService
+4. AgentService发送message到valid-msg-topic
+5. ValidService消费到valid-msg-topic的message数据
+6. ValidService完成消息合法性的检查
+7. ValidService将合法性检查的结果写入到valided-msg-topic
+8. ReplyService消费到valided-msg-topic的检查结果,发送并且publish /sender/android
+9. AgentService收到发送消息的检查结果，并把数据发送给sender客户端
+
+<!-- livebook:{"break_markdown":true} -->
+
+<!-- Learn more at https://mermaid-js.github.io/mermaid -->
+
+```mermaid
+flowchart LR
+    Sender-->|1 参数合法性检测|SenderAgentService
+    SenderAgentService-->|2 业务合法性检测（服务级队列，用户级分区）|ValidService
+    ValidService-->|3-1 发送结果（服务级对立，用户级分区）|ReplyService
+    ReplyService-->|4 返回发送者发送结果到Sender所在的节点|SenderAgentService
+    SenderAgentService-->|5 返回发送结果给客户端|Sender
+    ValidService-->|3-2 路由消息（服务级队列，用户级分区）|Persistent
+    ValidService-->|3-3 路由消息（服务级队列，用户级分区）|RouterService
+    RouterService-->|4 推送消息|AgentService
+    AgentService-->|5 发送消息到接收方|Receiver
+```
+
+<!-- livebook:{"break_markdown":true} -->
+
+<!-- Learn more at https://mermaid-js.github.io/mermaid -->
+
+```mermaid
 sequenceDiagram
-    Sender->>+AgentService: receive client message 
-    AgentService->>+MQ: pub message to (valid-msg-topic)
+    Sender->>+SenderAgentService: receive client message 
+    SenderAgentService->>+MQ: pub message to (valid-msg-topic)
     MQ->>+ValidService: consume message from valid-msg-topic
     ValidService->>ValidService: valid message
     ValidService->>+MQ: send valided msg to (valided-msg-topic)
     MQ->>ReplyService: send reply to Sender
-    ReplyService->>AgentService: route send_ack to ReceiveService
-    AgentService->>-Sender: reply send_ack to Sender
+    ReplyService->>SenderAgentService: route send_ack to ReceiveService
+    SenderAgentService->>-Sender: reply send_ack to Sender
     MQ->>RouterService: route message to Receiver
     RouterService->>AgentService: router msg to Receiver's AgentService
+    AgentService->>Receiver: send message to receiver
+    Receiver->>AgentService: ack message
+```
+
+<!-- livebook:{"break_markdown":true} -->
+
+### 异步MQ的topic的设计-用户级topic版本
+
+该方案引入了AgentService，ValidService进行，主要的区别Agent能够直接消费到对应的数据
+
+1. 用户sender登录到AgentService
+2. 用户订阅topic用户级别，比如subscribe /sender/android
+3. sender发送消息到AgentService
+4. AgentService发送message到valid-msg-topic
+5. ValidService消费到valid-msg-topic的message数据
+6. ValidService完成消息合法性的检查
+7. ValidService将合法性检查的结果写入到valided-msg-topic
+8. ReplyService消费到valided-msg-topic的检查结果,发送并且publish /sender/android
+9. AgentService收到发送消息的检查结果，并把数据发送给sender客户端
+
+<!-- livebook:{"break_markdown":true} -->
+
+```mermaid
+flowchart LR
+    Sender-->|0 登录订阅用户级队列 /user/mobile |SenderAgentService
+    Sender-->|1 参数合法性检测|SenderAgentService
+    SenderAgentService-->|2 业务合法性检测（服务级队列，用户级分区）|ValidService
+    ValidService-->|3-1 发送结果（用户级队列 /user/mobile）|SenderAgentService
+    SenderAgentService-->|4 返回发送结果给客户端|Sender
+    ValidService-->|3-2 路由消息（服务级队列，用户级分区）|Persistent
+    ValidService-->|3-3 路由消息（用户级队列）|AgentService
+    AgentService-->|4 发送消息到接收方|Receiver
+```
+
+<!-- livebook:{"break_markdown":true} -->
+
+<!-- Learn more at https://mermaid-js.github.io/mermaid -->
+
+```mermaid
+sequenceDiagram
+    Sender->>+SenderAgentService: login && subscribe /sender/mobile && /sender
+    SenderAgentService->>+MQ: pub message to (valid-msg-topic)
+    MQ->>+ValidService: consume message from valid-msg-topic
+    ValidService->>ValidService: valid message
+    ValidService->>+MQ: send valided msg to (/sender/mobile)
+    ValidService->>+MQ: route message to dest (/receiver || /receiver/mobile)
+    MQ->>SenderAgentService: send reply to Sender
+    SenderAgentService->>-Sender: reply send_ack to Sender
+    MQ->>AgentService: get msg to Receiver's AgentService
     AgentService->>Receiver: send message to receiver
     Receiver->>AgentService: ack message
 ```
