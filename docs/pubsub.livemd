@@ -186,6 +186,8 @@ end
 
 #### 加入聊天室
 
+TODO
+
 <!-- livebook:{"break_markdown":true} -->
 
 #### 发送消息（长连接）
@@ -322,4 +324,42 @@ sequenceDiagram
     MQ->>AgentService: get msg to Receiver's AgentService
     AgentService->>Receiver: send message to receiver
     Receiver->>AgentService: ack message
+```
+
+## REST发送消息
+
+### 背景
+
+当前发送消息，包括聊天室消息，群组消息，单人消息。
+
+### 现状
+
+<!-- livebook:{"break_markdown":true} -->
+
+<!-- Learn more at https://mermaid-js.github.io/mermaid -->
+
+```mermaid
+flowchart LR
+    AppServer-->|0 发送系统消息 |Gateway
+    Gateway-->|1 验证token合法性| MessageService
+    MessageService-->|2 检查参数合法性 | MessageService
+    MessageService-->|3-1 返回消息发送成功|Gateway
+    Gateway-->|4-1 返回发送结果 | AppServer
+    MessageService -->|3-2 路由消息（此处过程同上面长连接过程） | RouterService
+    RouterService -->|4 发送消息到接收方|Receiver
+```
+
+<!-- livebook:{"break_markdown":true} -->
+
+<!-- Learn more at https://mermaid-js.github.io/mermaid -->
+
+```mermaid
+sequenceDiagram
+    AppServer->>+Gateway: 0 发送系统消息
+    Gateway->>+MessageService: 1 验证token合法性
+    MessageService->MessageService: 2 检查参数合法性
+    MessageService-->Gateway: 3-1 返回消息发送成功
+    Gateway-->AppServer: 4-1 返回发送结果
+    MessageService -->RouterService: 3-2 路由消息（此处过程同上面长连接过程）
+    RouterService -->Receiver: 4 发送消息到接收方
 ```
