@@ -382,7 +382,7 @@ IM服务接收到客户的请求后，进行接下来的操作
 
 1. 验证token的合法性，当前主要在gateway进行
 2. 参数合法性检查，确认必要的参数是否都有
-3. 消息写入到队列MQ
+3. 消息写入到队列MQ（消息持久化）
 4. 返回发送结果给调用者，路径中包括gateway和AppServer
 5. 消息服消费到MQ中消息，进行后续的投递过程
 6. 消息服务发送给消息的接收者
@@ -413,8 +413,24 @@ sequenceDiagram
     AppServer->>+Gateway: 0 发送系统消息
     Gateway->>+MessageService: 1 验证token合法性
     MessageService-->>MessageService: 2 检查参数合法性
-    MessageService-->-Gateway: 3-1 返回消息发送成功
-    Gateway-->-AppServer: 4-1 返回发送结果
-    MessageService ->>RouterService: 3-2 路由消息（此处过程同上面长连接过程）
-    RouterService ->>Receiver: 4 发送消息到接收方
+    MessageService ->>RouterService: 3-1 路由消息（此处过程同上面长连接过程）
+    MessageService-->>-Gateway: 3-2 返回消息发送成功
+    Gateway-->>-AppServer: 4-1 返回发送结果
+    RouterService ->>Receiver: 4-2 发送消息到接收方
 ```
+
+<!-- livebook:{"break_markdown":true} -->
+
+队列方案当前遗留问题
+
+1. 如何进行租户级别的隔离
+2. 队列的可靠性如何进行监控
+
+<!-- livebook:{"break_markdown":true} -->
+
+### 方案对比
+
+| 方案 | 延迟 | 可靠性 | 性能 |
+| ------ | ------ | --------- | ------ |
+| 直投 | 较低 | 较差    | 较好 |
+| 队列 | 稍高 | 好       | 好    |

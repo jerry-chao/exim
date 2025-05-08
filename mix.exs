@@ -60,7 +60,8 @@ defmodule Exim.MixProject do
       {:swoosh, "~> 1.4"},
       {:hackney, "~> 1.9"},
       {:broadway_kafka, "~> 0.4.4"},
-      {:horde, "~> 0.9.0"}
+      {:horde, "~> 0.9.0"},
+      {:redix, "~> 1.2"}
     ]
   end
 

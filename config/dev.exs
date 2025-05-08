@@ -12,7 +12,7 @@ config :exim, Exim.Repo,
 
 config :exim,
   kafka_hosts: [localhost: 9092],
-  kafka_topics: ["test"]
+  kafka_topics: ["exim-auth"]
 
 # For development, we disable any cache and enable
 # debugging and code reloading.
