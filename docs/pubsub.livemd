@@ -397,11 +397,11 @@ flowchart LR
     Gateway-->|1 验证token合法性| MessageService
     MessageService-->|2 检查参数合法性 | MessageService
     MessageService-->|3-1 消息写入队列|MQ
-    MessageService-->|3-1 返回消息发送成功|Gateway
+    MessageService-->|3-2 返回消息发送成功|Gateway
     Gateway-->|4-1 返回发送结果 | AppServer
-    MQ-->|3-1 消息读取队列|RouterService
-    RouterService-->|3-2 路由消息（此处过程同上面长连接过程） | AgentService
-    AgentService -->|4 发送消息到接收方|Receiver
+    MQ-->|4-2 消息读取队列|RouterService
+    RouterService-->|5 路由消息（此处过程同上面长连接过程） | AgentService
+    AgentService -->|6 发送消息到接收方|Receiver
 ```
 
 <!-- livebook:{"break_markdown":true} -->
@@ -413,24 +413,18 @@ sequenceDiagram
     AppServer->>+Gateway: 0 发送系统消息
     Gateway->>+MessageService: 1 验证token合法性
     MessageService-->>MessageService: 2 检查参数合法性
-    MessageService ->>RouterService: 3-1 路由消息（此处过程同上面长连接过程）
+    MessageService->>MQ: 3-1 消息写入队列
     MessageService-->>-Gateway: 3-2 返回消息发送成功
     Gateway-->>-AppServer: 4-1 返回发送结果
-    RouterService ->>Receiver: 4-2 发送消息到接收方
+    MQ->>RouterService: 4-2 消息读取队列
+    RouterService->>AgentService: 5 路由消息（此处过程同上面长连接过程）
+    AgentService ->>Receiver: 6 发送消息到接收方
 ```
 
 <!-- livebook:{"break_markdown":true} -->
 
-队列方案当前遗留问题
+添加队列方案当前遗留问题
 
 1. 如何进行租户级别的隔离
 2. 队列的可靠性如何进行监控
-
-<!-- livebook:{"break_markdown":true} -->
-
-### 方案对比
-
-| 方案 | 延迟 | 可靠性 | 性能 |
-| ------ | ------ | --------- | ------ |
-| 直投 | 较低 | 较差    | 较好 |
-| 队列 | 稍高 | 好       | 好    |
+3. 延时会有所增加，是否在可接受范围内
