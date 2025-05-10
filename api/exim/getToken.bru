@@ -1,0 +1,20 @@
+meta {
+  name: getToken
+  type: http
+  seq: 2
+}
+
+post {
+  url: http://127.0.0.1:4001/api/token
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "user": {
+      "email": "zhangchao@test.com",
+      "password": "SimbazhanG123"
+    }
+  }
+}

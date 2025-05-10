@@ -6,13 +6,15 @@ defmodule EximWeb.UserSocket do
   require Logger
 
   def connect(%{"token" => token}, socket, _connect_info) do
-    case Phoenix.Token.verify(socket, "user socket", token, max_age: 1_209_600) do
+    Logger.info("UserSocket connected #{inspect(socket)}, self pid #{inspect(self())}")
+
+    case Phoenix.Token.verify(socket, "user token", token, max_age: 1_209_600) do
       {:ok, user_id} ->
         Logger.info("UserSocket connected user_id: #{user_id}")
         {:ok, assign(socket, :current_user, user_id)}
 
       {:error, reason} ->
-        Logger.error("UserSocket connection failed: #{inspect(reason)}")
+        Logger.error("UserSocket connection failed: #{inspect(reason)}, token: #{inspect(token)}")
         :error
     end
   end

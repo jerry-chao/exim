@@ -16,7 +16,7 @@ defmodule EximWeb.Router do
 
   defp put_user_token(conn, _) do
     if current_user = conn.assigns[:current_user] do
-      token = Phoenix.Token.sign(conn, "user socket", current_user.id)
+      token = Phoenix.Token.sign(conn, "user token", current_user.id)
       assign(conn, :user_token, token)
     else
       conn
@@ -25,6 +25,8 @@ defmodule EximWeb.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
+    plug :fetch_session
+    plug :fetch_current_user
   end
 
   scope "/", EximWeb do
@@ -34,9 +36,11 @@ defmodule EximWeb.Router do
   end
 
   # Other scopes may use custom stacks.
-  # scope "/api", EximWeb do
-  #   pipe_through :api
-  # end
+  scope "/api", EximWeb do
+    pipe_through :api
+
+    post "/token", TokenController, :get_token
+  end
 
   # Enable LiveDashboard in development
   if Application.compile_env(:exim, :dev_routes) do
