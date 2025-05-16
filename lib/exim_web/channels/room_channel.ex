@@ -7,6 +7,6 @@ defmodule EximWeb.RoomChannel do
 
   def handle_in("new_message", %{"content" => body}, socket) do
     broadcast!(socket, "new_message", %{content: body})
-    {:noreply, socket}
+    {:reply, :ok, socket}
   end
 end
