@@ -1,7 +1,7 @@
 defmodule EximWeb.UserSocket do
   use Phoenix.Socket
 
-  channel "room:*", EximWeb.RoomChannel
+  channel "*", EximWeb.RoomChannel
 
   require Logger
 
