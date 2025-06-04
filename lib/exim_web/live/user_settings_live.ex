@@ -75,7 +75,7 @@ defmodule EximWeb.UserSettingsLive do
 
   def mount(%{"token" => token}, _session, socket) do
     socket =
-      case Accounts.update_user_email(socket.assigns.current_user, token) do
+      case Accounts.authenticate_user(socket.assigns.current_user, token) do
         :ok ->
           put_flash(socket, :info, "Email changed successfully.")
 

@@ -2,7 +2,7 @@ defmodule EximWeb.UserRegistrationLive do
   use EximWeb, :live_view
 
   alias Exim.Accounts
-  alias Exim.Accounts.User
+  alias Exim.User
 
   def render(assigns) do
     ~H"""
@@ -56,12 +56,6 @@ defmodule EximWeb.UserRegistrationLive do
   def handle_event("save", %{"user" => user_params}, socket) do
     case Accounts.register_user(user_params) do
       {:ok, user} ->
-        {:ok, _} =
-          Accounts.deliver_user_confirmation_instructions(
-            user,
-            &url(~p"/users/confirm/#{&1}")
-          )
-
         changeset = Accounts.change_user_registration(user)
         {:noreply, socket |> assign(trigger_submit: true) |> assign_form(changeset)}
 

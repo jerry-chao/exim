@@ -32,15 +32,15 @@ defmodule EximWeb.Router do
   scope "/", EximWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
+    live "/register", RegistrationLive, :new
+    live "/login", LoginLive, :new
+    live "/chat", ChatLive, :index
   end
 
   # Other scopes may use custom stacks.
-  scope "/api", EximWeb do
-    pipe_through :api
-
-    post "/token", TokenController, :get_token
-  end
+  # scope "/api", EximWeb do
+  #   pipe_through :api
+  # end
 
   # Enable LiveDashboard in development
   if Application.compile_env(:exim, :dev_routes) do
