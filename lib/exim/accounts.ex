@@ -17,6 +17,8 @@ defmodule Exim.Accounts do
     
     # It is very important to keep the reset password token expiry short,
     # since someone with access to the email may take over the account.
+    @reset_password_validity_in_days 1
+    @confirm_validity_in_days 7
     @session_validity_in_days 60
     
     schema "users_tokens" do
@@ -62,6 +64,50 @@ defmodule Exim.Accounts do
       
       {:ok, query}
     end
+    
+    @doc """
+    Builds a token with a hashed counter used for user confirmation.
+    """
+    def build_email_token(user, context) do
+      build_hashed_token(user, context, user.email)
+    end
+
+    defp build_hashed_token(user, context, _sent_to) do
+      token = :crypto.strong_rand_bytes(@rand_size)
+      hashed_token = :crypto.hash(@hash_algorithm, token)
+
+      {Base.url_encode64(token, padding: false),
+       %UserToken{
+         token: hashed_token,
+         context: context,
+         user_id: user.id
+       }}
+    end
+    
+    @doc """
+    Verifies the token for user confirmation and reset password.
+    """
+    def verify_email_token_query(token, context) do
+      case Base.url_decode64(token, padding: false) do
+        {:ok, decoded_token} ->
+          hashed_token = :crypto.hash(@hash_algorithm, decoded_token)
+          days = days_for_context(context)
+
+          query =
+            from token in token_and_context_query(hashed_token, context),
+              join: user in assoc(token, :user),
+              where: token.inserted_at > ago(^days, "day"),
+              select: user
+
+          {:ok, query}
+
+        :error ->
+          :error
+      end
+    end
+
+    defp days_for_context("confirm"), do: @confirm_validity_in_days
+    defp days_for_context("reset_password"), do: @reset_password_validity_in_days
     
     @doc """
     Returns the token struct for the given token value and context.
@@ -165,6 +211,88 @@ defmodule Exim.Accounts do
   def delete_user_session_token(token) do
     Repo.delete_all(UserToken.token_and_context_query(token, "session"))
     :ok
+  end
+  
+  @doc """
+  Updates the user's password.
+  
+  ## Examples
+  
+      iex> update_user_password(user, "current password", %{password: "new password"})
+      {:ok, %User{}}
+      
+      iex> update_user_password(user, "invalid", %{password: "new password"})
+      {:error, %Ecto.Changeset{}}
+  """
+  def update_user_password(user, current_password, attrs) do
+    changeset =
+      user
+      |> User.password_changeset(attrs)
+    
+    with {:ok, _} <- User.validate_current_password(user, current_password) do
+      Ecto.Multi.new()
+      |> Ecto.Multi.update(:user, changeset)
+      |> Ecto.Multi.delete_all(:tokens, UserToken.user_and_contexts_query(user, ["session"]))
+      |> Repo.transaction()
+      |> case do
+        {:ok, %{user: user}} -> {:ok, user}
+        {:error, :user, changeset, _} -> {:error, changeset}
+      end
+    end
+  end
+  
+  @doc """
+  Confirms a user by token.
+  """
+  def confirm_user(token) do
+    with {:ok, query} <- UserToken.verify_email_token_query(token, "confirm"),
+         %User{} = user <- Repo.one(query),
+         {:ok, %{user: user}} <- Repo.transaction(confirm_user_multi(user)) do
+      {:ok, user}
+    else
+      _ -> :error
+    end
+  end
+
+  defp confirm_user_multi(user) do
+    Ecto.Multi.new()
+    |> Ecto.Multi.update(:user, User.confirm_changeset(user))
+    |> Ecto.Multi.delete_all(:tokens, UserToken.user_and_contexts_query(user, ["confirm"]))
+  end
+  
+  @doc """
+  Resets the user password using a token.
+  """
+  def reset_user_password(user, attrs) do
+    Ecto.Multi.new()
+    |> Ecto.Multi.update(:user, User.password_changeset(user, attrs))
+    |> Ecto.Multi.delete_all(:tokens, UserToken.user_and_contexts_query(user, ["reset_password"]))
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{user: user}} -> {:ok, user}
+      {:error, :user, changeset, _} -> {:error, changeset}
+    end
+  end
+  
+  @doc """
+  Gets the user by reset password token.
+  """
+  def get_user_by_reset_password_token(token) do
+    with {:ok, query} <- UserToken.verify_email_token_query(token, "reset_password"),
+         %User{} = user <- Repo.one(query) do
+      user
+    else
+      _ -> nil
+    end
+  end
+  
+  @doc """
+  Delivers instructions to reset a user password.
+  """
+  def deliver_user_reset_password_instructions(%User{} = user, reset_url_fun) do
+    {encoded_token, user_token} = UserToken.build_email_token(user, "reset_password")
+    Repo.insert!(user_token)
+    %{to: user.email, url: reset_url_fun.(encoded_token), user: user}
   end
 
   @doc """

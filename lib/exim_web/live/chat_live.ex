@@ -1,7 +1,6 @@
 defmodule EximWeb.ChatLive do
   use EximWeb, :live_view
   alias Exim.Messages
-  alias Exim.Message
 
   def mount(_params, _session, socket) do
     if connected?(socket) do
@@ -22,15 +21,15 @@ defmodule EximWeb.ChatLive do
         <div class="bg-white rounded-lg shadow-lg p-6">
           <h1 class="text-2xl font-bold mb-4">Chat Room</h1>
 
-          <div id="messages" phx-update="append" class="space-y-4 mb-4 h-[500px] overflow-y-auto">
+          <div id="messages" class="space-y-4 mb-4 h-[500px] overflow-y-auto">
             <%= for message <- @messages do %>
               <div id={"message-#{message.id}"} class="flex items-start space-x-2">
                 <div class="flex-1">
                   <div class="bg-gray-100 rounded-lg p-3">
-                    <p class="font-semibold text-sm text-gray-600">{message.user.username}</p>
-                    <p class="text-gray-800">{message.content}</p>
+                    <p class="font-semibold text-sm text-gray-600"><%= message.user.username %></p>
+                    <p class="text-gray-800"><%= message.content %></p>
                     <p class="text-xs text-gray-500 mt-1">
-                      {Calendar.strftime(message.inserted_at, "%Y-%m-%d %H:%M:%S")}
+                      <%= Calendar.strftime(message.inserted_at, "%Y-%m-%d %H:%M:%S") %>
                     </p>
                   </div>
                 </div>
@@ -70,6 +69,6 @@ defmodule EximWeb.ChatLive do
   end
 
   def handle_info(%{event: "new_message", payload: message}, socket) do
-    {:noreply, stream_insert(socket, :messages, message, at: -1)}
+    {:noreply, assign(socket, messages: socket.assigns.messages ++ [message])}
   end
 end
