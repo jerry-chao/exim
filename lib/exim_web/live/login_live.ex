@@ -37,7 +37,7 @@ defmodule EximWeb.LoginLive do
 
   def handle_event("login", %{"user" => %{"email" => email, "password" => password}}, socket) do
     case Accounts.authenticate_user(email, password) do
-      {:ok, user} ->
+      {:ok, _user} ->
         {:noreply,
          socket
          |> put_flash(:info, "Welcome back!")

@@ -18,14 +18,14 @@ defmodule Exim.User do
   @doc false
   def changeset(user, attrs) do
     user
-    |> cast(attrs, [:email, :username, :password, :password_confirmation])
-    |> validate_required([:email, :username, :password, :password_confirmation])
+    |> cast(attrs, [:email, :username, :password])
+    |> validate_required([:email, :username, :password])
     |> validate_format(:email, ~r/^[^\s@]+@[^\s@]+\.[^\s@]+$/)
     |> validate_length(:password, min: 6)
-    |> validate_confirmation(:password)
     |> unique_constraint(:email)
     |> unique_constraint(:username)
     |> put_password_hash()
+    |> put_change(:confirmed_at, DateTime.utc_now() |> DateTime.truncate(:second))
   end
 
   def registration_changeset(user, attrs, opts \\ []) do
@@ -47,7 +47,6 @@ defmodule Exim.User do
     |> cast(attrs, [:password])
     |> validate_required([:password])
     |> validate_length(:password, min: 6)
-    |> validate_confirmation(:password, message: "does not match password")
     |> maybe_hash_password(opts)
   end
 

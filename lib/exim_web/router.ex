@@ -31,7 +31,7 @@ defmodule EximWeb.Router do
 
   scope "/", EximWeb do
     pipe_through :browser
-
+    live "/", LoginLive, :index
     live "/register", RegistrationLive, :new
     live "/login", LoginLive, :new
     live "/chat", ChatLive, :index

@@ -61,7 +61,8 @@ defmodule Exim.MixProject do
       {:hackney, "~> 1.9"},
       {:broadway_kafka, "~> 0.4.4"},
       {:horde, "~> 0.9.0"},
-      {:redix, "~> 1.2"}
+      {:redix, "~> 1.2"},
+      {:tidewave, "~> 0.1", only: :dev}
     ]
   end
 

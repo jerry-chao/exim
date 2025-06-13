@@ -76,10 +76,10 @@ defmodule EximWeb.UserSettingsLive do
   def mount(%{"token" => token}, _session, socket) do
     socket =
       case Accounts.authenticate_user(socket.assigns.current_user, token) do
-        :ok ->
+        {:ok, _} ->
           put_flash(socket, :info, "Email changed successfully.")
 
-        :error ->
+        {:error, _} ->
           put_flash(socket, :error, "Email change link is invalid or it has expired.")
       end
 
@@ -116,17 +116,11 @@ defmodule EximWeb.UserSettingsLive do
   end
 
   def handle_event("update_email", params, socket) do
-    %{"current_password" => password, "user" => user_params} = params
+    %{"current_password" => _password, "user" => user_params} = params
     user = socket.assigns.current_user
 
-    case Accounts.apply_user_email(user, password, user_params) do
-      {:ok, applied_user} ->
-        Accounts.deliver_user_update_email_instructions(
-          applied_user,
-          user.email,
-          &url(~p"/users/settings/confirm_email/#{&1}")
-        )
-
+    case Accounts.apply_user_email(user, user_params) do
+      {:ok, _applied_user} ->
         info = "A link to confirm your email change has been sent to the new address."
         {:noreply, socket |> put_flash(:info, info) |> assign(email_form_current_password: nil)}
 
