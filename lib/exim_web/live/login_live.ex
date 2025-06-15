@@ -37,7 +37,12 @@ defmodule EximWeb.LoginLive do
 
   def handle_event("login", %{"user" => %{"email" => email, "password" => password}}, socket) do
     case Accounts.authenticate_user(email, password) do
-      {:ok, _user} ->
+      {:ok, user} ->
+        # Subscribe to user's personal channel
+        if connected?(socket) do
+          EximWeb.Endpoint.subscribe("user:#{user.id}")
+        end
+
         {:noreply,
          socket
          |> put_flash(:info, "Welcome back!")

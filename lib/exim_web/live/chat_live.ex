@@ -25,17 +25,14 @@ defmodule EximWeb.ChatLive do
   end
 
   def handle_event("send_message", %{"message" => %{"content" => content}}, socket) do
-    case Messages.create_message(%{content: content, user_id: socket.assigns.current_user.id}) do
-      {:ok, message} ->
-        EximWeb.Endpoint.broadcast("chat", "new_message", message)
-        {:noreply, assign(socket, form: to_form(%{}, as: "message"))}
-
-      {:error, _changeset} ->
-        {:noreply,
-         socket
-         |> put_flash(:error, "Failed to send message")
-         |> assign(form: to_form(%{}, as: "message"))}
+    if user = socket.assigns.current_user do
+      EximWeb.Endpoint.broadcast("user:#{user.id}", "new_message", %{
+        content: content,
+        user_id: user.id
+      })
     end
+
+    {:noreply, assign(socket, form: to_form(%{}, as: "message"))}
   end
 
   def handle_info(%{event: "new_message", payload: message}, socket) do
