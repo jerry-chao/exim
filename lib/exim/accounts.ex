@@ -6,53 +6,53 @@ defmodule Exim.Accounts do
   import Ecto.Query, warn: false
   alias Exim.Repo
   alias Exim.User
-  
+
   # UserToken schema for session handling
   defmodule UserToken do
     use Ecto.Schema
     import Ecto.Query
-    
+
     @hash_algorithm :sha256
     @rand_size 32
-    
+
     # It is very important to keep the reset password token expiry short,
     # since someone with access to the email may take over the account.
     @reset_password_validity_in_days 1
     @confirm_validity_in_days 7
     @session_validity_in_days 60
-    
+
     schema "users_tokens" do
       field :token, :binary
       field :context, :string
       belongs_to :user, User
-      
+
       timestamps(updated_at: false)
     end
-    
+
     @doc """
     Generates a token that will be stored in a signed place,
     such as session or cookie. As they are signed, those
     tokens do not need to be hashed.
-    
+
     The reason why we store session tokens in the database, even
     though Phoenix already provides a session cookie, is because
     Phoenix' default session cookies are not persisted, they are
     simply signed and potentially encrypted. This means they are
     valid indefinitely, unless you change the signing/encryption
     salt.
-    
+
     Therefore, we store a token in the database to ensure that even
-    if the salt changes, we can still validate the token in the 
+    if the salt changes, we can still validate the token in the
     database.
     """
     def build_session_token(user) do
       token = :crypto.strong_rand_bytes(@rand_size)
       {token, %UserToken{token: token, context: "session", user_id: user.id}}
     end
-    
+
     @doc """
     Checks if the token is valid and returns its underlying lookup query.
-    
+
     The query returns the user found by the token, if any.
     """
     def verify_session_token_query(token) do
@@ -61,10 +61,10 @@ defmodule Exim.Accounts do
           join: user in assoc(token, :user),
           where: token.inserted_at > ago(@session_validity_in_days, "day"),
           select: user
-      
+
       {:ok, query}
     end
-    
+
     @doc """
     Builds a token with a hashed counter used for user confirmation.
     """
@@ -83,7 +83,7 @@ defmodule Exim.Accounts do
          user_id: user.id
        }}
     end
-    
+
     @doc """
     Verifies the token for user confirmation and reset password.
     """
@@ -108,14 +108,14 @@ defmodule Exim.Accounts do
 
     defp days_for_context("confirm"), do: @confirm_validity_in_days
     defp days_for_context("reset_password"), do: @reset_password_validity_in_days
-    
+
     @doc """
     Returns the token struct for the given token value and context.
     """
     def token_and_context_query(token, context) do
       from UserToken, where: [token: ^token, context: ^context]
     end
-    
+
     @doc """
     Gets all tokens for the given user.
     """
@@ -181,13 +181,15 @@ defmodule Exim.Accounts do
   @doc """
   Gets a user by email and password.
   """
-  def get_user_by_email_and_password(email, password) when is_binary(email) and is_binary(password) do
+  def get_user_by_email_and_password(email, password)
+      when is_binary(email) and is_binary(password) do
     user = get_user_by_email(email)
+
     if user && User.valid_password?(user, password) do
       user
     end
   end
-  
+
   @doc """
   Generates a session token.
   """
@@ -196,7 +198,7 @@ defmodule Exim.Accounts do
     Repo.insert!(user_token)
     token
   end
-  
+
   @doc """
   Gets the user with the given signed token.
   """
@@ -204,7 +206,7 @@ defmodule Exim.Accounts do
     {:ok, query} = UserToken.verify_session_token_query(token)
     Repo.one(query)
   end
-  
+
   @doc """
   Deletes the signed token with the given context.
   """
@@ -212,15 +214,15 @@ defmodule Exim.Accounts do
     Repo.delete_all(UserToken.token_and_context_query(token, "session"))
     :ok
   end
-  
+
   @doc """
   Updates the user's password.
-  
+
   ## Examples
-  
+
       iex> update_user_password(user, "current password", %{password: "new password"})
       {:ok, %User{}}
-      
+
       iex> update_user_password(user, "invalid", %{password: "new password"})
       {:error, %Ecto.Changeset{}}
   """
@@ -228,7 +230,7 @@ defmodule Exim.Accounts do
     changeset =
       user
       |> User.password_changeset(attrs)
-    
+
     with {:ok, _} <- User.validate_current_password(user, current_password) do
       Ecto.Multi.new()
       |> Ecto.Multi.update(:user, changeset)
@@ -240,7 +242,7 @@ defmodule Exim.Accounts do
       end
     end
   end
-  
+
   @doc """
   Confirms a user by token.
   """
@@ -259,7 +261,7 @@ defmodule Exim.Accounts do
     |> Ecto.Multi.update(:user, User.confirm_changeset(user))
     |> Ecto.Multi.delete_all(:tokens, UserToken.user_and_contexts_query(user, ["confirm"]))
   end
-  
+
   @doc """
   Resets the user password using a token.
   """
@@ -273,7 +275,7 @@ defmodule Exim.Accounts do
       {:error, :user, changeset, _} -> {:error, changeset}
     end
   end
-  
+
   @doc """
   Gets the user by reset password token.
   """
@@ -285,7 +287,7 @@ defmodule Exim.Accounts do
       _ -> nil
     end
   end
-  
+
   @doc """
   Delivers instructions to reset a user password.
   """
@@ -376,5 +378,10 @@ defmodule Exim.Accounts do
         Bcrypt.no_user_verify()
         {:error, :not_found}
     end
+  end
+
+  def get_user_channels(user_id) do
+    user = Repo.get!(User, user_id) |> Repo.preload(:channels)
+    user.channels
   end
 end

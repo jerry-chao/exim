@@ -1,35 +1,61 @@
 defmodule EximWeb.ChatLive do
   use EximWeb, :live_view
-  alias Exim.Messages
+  alias Exim.{Messages, Accounts, Channels}
 
-  def mount(_params, _session, socket) do
-    if connected?(socket) do
-      EximWeb.Endpoint.subscribe("chat")
+  def mount(_params, session, socket) do
+    user =
+      cond do
+        Map.has_key?(socket.assigns, :current_user) && socket.assigns.current_user ->
+          socket.assigns.current_user
+
+        session["user_token"] ->
+          Accounts.get_user_by_session_token(session["user_token"])
+
+        true ->
+          nil
+      end
+
+    if is_nil(user) do
+      {:ok, redirect(socket, to: "/login")}
+    else
+      channels = Accounts.get_user_channels(user.id)
+      current_channel = List.first(channels)
+
+      messages =
+        if current_channel, do: Messages.list_messages_by_channel(current_channel.id), else: []
+
+      {:ok,
+       assign(socket,
+         current_user: user,
+         channels: channels,
+         current_channel: current_channel,
+         messages: messages,
+         form: to_form(%{}, as: "message")
+       )}
     end
-
-    {:ok,
-     assign(socket,
-       messages: Messages.list_messages(),
-       conversations: [
-         %{id: 1, name: "General Chat", unread: 0},
-         %{id: 2, name: "Support", unread: 3},
-         %{id: 3, name: "Team", unread: 1}
-       ],
-       current_conversation: 1,
-       form: to_form(%{}, as: "message")
-     )}
   end
 
-  def handle_event("select_conversation", %{"id" => id}, socket) do
-    {:noreply, assign(socket, current_conversation: String.to_integer(id))}
+  def handle_event("select_channel", %{"id" => id}, socket) do
+    channel = Enum.find(socket.assigns.channels, &("#{&1.id}" == id))
+    messages = Messages.list_messages_by_channel(channel.id)
+    {:noreply, assign(socket, current_channel: channel, messages: messages)}
   end
 
   def handle_event("send_message", %{"message" => %{"content" => content}}, socket) do
-    if user = socket.assigns.current_user do
-      EximWeb.Endpoint.broadcast("user:#{user.id}", "new_message", %{
-        content: content,
-        user_id: user.id
-      })
+    user = socket.assigns.current_user
+    channel = socket.assigns.current_channel
+
+    if user && channel do
+      {:ok, message} =
+        Messages.create_message(%{
+          content: content,
+          from_id: user.id,
+          # 可扩展为@提及或私聊
+          to_id: nil,
+          channel_id: channel.id
+        })
+
+      EximWeb.Endpoint.broadcast("channel:#{channel.id}", "new_message", message)
     end
 
     {:noreply, assign(socket, form: to_form(%{}, as: "message"))}

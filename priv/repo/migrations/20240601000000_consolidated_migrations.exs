@@ -29,11 +29,15 @@ defmodule Exim.Repo.Migrations.ConsolidatedMigrations do
     # Create messages table
     create table(:messages) do
       add :content, :text
-      add :user_id, references(:users, on_delete: :nothing)
+      add :from_id, references(:users, on_delete: :nothing)
+      add :to_id, references(:users, on_delete: :nothing)
+      add :channel_id, references(:channels, on_delete: :delete_all)
 
       timestamps(type: :utc_datetime)
     end
 
-    create index(:messages, [:user_id])
+    create index(:messages, [:from_id])
+    create index(:messages, [:to_id])
+    create index(:messages, [:channel_id])
   end
 end

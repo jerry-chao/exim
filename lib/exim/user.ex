@@ -10,7 +10,9 @@ defmodule Exim.User do
     field :password, :string, virtual: true
     field :password_confirmation, :string, virtual: true
     field :confirmed_at, :utc_datetime
-    has_many :messages, Message
+    has_many :sent_messages, Message, foreign_key: :from_id
+    has_many :received_messages, Message, foreign_key: :to_id
+    many_to_many :channels, Exim.Channel, join_through: "user_channels"
 
     timestamps()
   end

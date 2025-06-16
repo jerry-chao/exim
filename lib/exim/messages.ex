@@ -12,7 +12,15 @@ defmodule Exim.Messages do
   def list_messages do
     Message
     |> order_by(desc: :inserted_at)
-    |> preload(:user)
+    |> preload([:from, :to])
+    |> Repo.all()
+  end
+
+  def list_messages_by_channel(channel_id) do
+    Message
+    |> where([m], m.channel_id == ^channel_id)
+    |> order_by(desc: :inserted_at)
+    |> preload([:from, :to])
     |> Repo.all()
   end
 

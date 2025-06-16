@@ -10,6 +10,7 @@ defmodule Exim.PubSub.SendMessageServiceTopic do
   def generate(from, to) when from > to do
     from <> to
   end
+
   def generate(from, to) when from < to do
     to <> from
   end
@@ -18,9 +19,9 @@ defmodule Exim.PubSub.SendMessageServiceTopic do
     send_private_request = %{
       method: "private_message",
       params: %{
-          from: from,
-          to: to,
-          message: message
+        from: from,
+        to: to,
+        message: message
       },
       key: generate(from, to),
       id: UUID.generate(),
