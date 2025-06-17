@@ -98,11 +98,12 @@ defmodule EximWeb.ChatLive do
           Messages.create_message(%{
             content: String.trim(content),
             from_id: user.id,
-            to_id: nil,
             channel_id: channel.id
           })
 
-        EximWeb.Endpoint.broadcast("channel:#{channel.id}", "new_message", message)
+        # Preload the from association before broadcasting
+        message_with_from = Exim.Repo.preload(message, :from)
+        EximWeb.Endpoint.broadcast("channel:#{channel.id}", "new_message", message_with_from)
 
         {:noreply, assign(socket, form: to_form(%{}, as: "message"))}
       else

@@ -1,6 +1,6 @@
 defmodule Exim.Channels do
   import Ecto.Query, warn: false
-  alias Exim.{Repo, Channel, UserChannel, User}
+  alias Exim.{Repo, Channel, UserChannel}
 
   @doc """
   Creates a channel with the given attributes.

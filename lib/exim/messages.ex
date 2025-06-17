@@ -12,7 +12,7 @@ defmodule Exim.Messages do
   def list_messages do
     Message
     |> order_by(desc: :inserted_at)
-    |> preload([:from, :to])
+    |> preload([:from])
     |> Repo.all()
   end
 
@@ -20,7 +20,7 @@ defmodule Exim.Messages do
     Message
     |> where([m], m.channel_id == ^channel_id)
     |> order_by(desc: :inserted_at)
-    |> preload([:from, :to])
+    |> preload([:from])
     |> Repo.all()
   end
 
