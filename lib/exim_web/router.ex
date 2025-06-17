@@ -35,6 +35,7 @@ defmodule EximWeb.Router do
     live "/register", RegistrationLive, :new
     live "/login", LoginLive, :new
     live "/chat", ChatLive, :index
+    live "/channels", ChannelManagerLive, :index
 
     # Session management routes
     get "/users/sessions", UserSessionController, :token_login
