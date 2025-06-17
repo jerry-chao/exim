@@ -39,6 +39,7 @@ defmodule EximWeb.Router do
     # Session management routes
     get "/users/sessions", UserSessionController, :token_login
     delete "/users/sessions", UserSessionController, :delete
+    delete "/users/log_out", UserSessionController, :delete
   end
 
   # API routes for token management
