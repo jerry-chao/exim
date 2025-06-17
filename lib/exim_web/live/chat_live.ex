@@ -1,6 +1,7 @@
 defmodule EximWeb.ChatLive do
   use EximWeb, :live_view
   alias Exim.{Messages, Accounts, Channels}
+  require Logger
 
   def mount(_params, session, socket) do
     user =
@@ -14,6 +15,7 @@ defmodule EximWeb.ChatLive do
         true ->
           nil
       end
+    Logger.info("User: #{inspect(user)}")
 
     if is_nil(user) do
       {:ok, redirect(socket, to: "/login")}
