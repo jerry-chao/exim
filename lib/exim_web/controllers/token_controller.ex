@@ -20,7 +20,7 @@ defmodule EximWeb.TokenController do
       {:ok, user} ->
         # Generate session token using the same system as web login
         token = Accounts.generate_user_session_token(user)
-        
+
         json(conn, %{
           token: Base.url_encode64(token),
           user: %{
@@ -29,7 +29,7 @@ defmodule EximWeb.TokenController do
             username: user.username
           }
         })
-        
+
       {:error, _reason} ->
         conn
         |> put_status(:unauthorized)
@@ -56,19 +56,19 @@ defmodule EximWeb.TokenController do
                     username: user.username
                   }
                 })
-              
+
               nil ->
                 conn
                 |> put_status(:unauthorized)
                 |> json(%{error: "Invalid or expired token"})
             end
-            
+
           :error ->
             conn
             |> put_status(:unauthorized)
             |> json(%{error: "Invalid token format"})
         end
-        
+
       _ ->
         conn
         |> put_status(:unauthorized)
@@ -88,13 +88,13 @@ defmodule EximWeb.TokenController do
           {:ok, decoded_token} ->
             Accounts.delete_user_session_token(decoded_token)
             json(conn, %{message: "Token invalidated successfully"})
-            
+
           :error ->
             conn
             |> put_status(:unauthorized)
             |> json(%{error: "Invalid token format"})
         end
-        
+
       _ ->
         conn
         |> put_status(:unauthorized)

@@ -36,7 +36,6 @@ defmodule EximWeb.UserSessionController do
 
   def delete(conn, _params) do
     conn
-    |> put_flash(:info, "Logged out successfully.")
     |> UserAuth.log_out_user()
   end
 
@@ -50,19 +49,19 @@ defmodule EximWeb.UserSessionController do
         case Accounts.get_user_by_session_token(token) do
           %Exim.User{} = user ->
             redirect_to = Map.get(params, "redirect_to", "/")
-            
+
             conn
             |> put_session(:user_token, token)
             |> put_session(:live_socket_id, "users_sessions:#{Base.url_encode64(token)}")
             |> assign(:current_user, user)
             |> redirect(to: redirect_to)
-            
+
           nil ->
             conn
             |> put_flash(:error, "Invalid or expired login token")
             |> redirect(to: ~p"/login")
         end
-        
+
       :error ->
         conn
         |> put_flash(:error, "Invalid login token format")

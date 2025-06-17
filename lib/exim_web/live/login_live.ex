@@ -4,12 +4,13 @@ defmodule EximWeb.LoginLive do
 
   def mount(_params, session, socket) do
     # Check if user is already logged in
-    current_user = if session["user_token"] do
-      Accounts.get_user_by_session_token(session["user_token"])
-    else
-      nil
-    end
-    
+    current_user =
+      if session["user_token"] do
+        Accounts.get_user_by_session_token(session["user_token"])
+      else
+        nil
+      end
+
     if current_user do
       {:ok, redirect(socket, to: ~p"/chat")}
     else
@@ -43,9 +44,13 @@ defmodule EximWeb.LoginLive do
           </.button>
         </:actions>
       </.simple_form>
-      
+
       <div class="text-center mt-4">
-        <.link href={~p"/users/sessions"} method="delete" class="text-sm text-gray-600 hover:text-brand">
+        <.link
+          href={~p"/users/sessions"}
+          method="delete"
+          class="text-sm text-gray-600 hover:text-brand"
+        >
           Sign out (if already logged in)
         </.link>
       </div>
@@ -58,7 +63,7 @@ defmodule EximWeb.LoginLive do
       {:ok, user} ->
         # Generate session token for the user
         token = Accounts.generate_user_session_token(user)
-        
+
         # Subscribe to user's personal channel
         if connected?(socket) do
           EximWeb.Endpoint.subscribe("user:#{user.id}")
@@ -69,7 +74,10 @@ defmodule EximWeb.LoginLive do
         {:noreply,
          socket
          |> put_flash(:info, "Welcome back!")
-         |> redirect(external: "/users/sessions?token=#{Base.url_encode64(token)}&redirect_to=#{URI.encode("/chat")}")}
+         |> redirect(
+           external:
+             "/users/sessions?token=#{Base.url_encode64(token)}&redirect_to=#{URI.encode("/chat")}"
+         )}
 
       {:error, _reason} ->
         {:noreply,

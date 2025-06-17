@@ -15,6 +15,7 @@ defmodule EximWeb.ChatLive do
         true ->
           nil
       end
+
     Logger.info("User: #{inspect(user)}")
 
     if is_nil(user) do

@@ -35,7 +35,7 @@ defmodule EximWeb.Router do
     live "/register", RegistrationLive, :new
     live "/login", LoginLive, :new
     live "/chat", ChatLive, :index
-    
+
     # Session management routes
     get "/users/sessions", UserSessionController, :token_login
     delete "/users/sessions", UserSessionController, :delete
@@ -45,7 +45,7 @@ defmodule EximWeb.Router do
   # API routes for token management
   scope "/api", EximWeb do
     pipe_through :api
-    
+
     post "/auth/login", TokenController, :get_token
     get "/auth/verify", TokenController, :verify_token
     delete "/auth/logout", TokenController, :invalidate_token
