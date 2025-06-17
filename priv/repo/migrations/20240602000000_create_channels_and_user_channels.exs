@@ -19,5 +19,12 @@ defmodule Exim.Repo.Migrations.CreateChannelsAndUserChannels do
     create index(:user_channels, [:user_id])
     create index(:user_channels, [:channel_id])
     create unique_index(:user_channels, [:user_id, :channel_id])
+
+    # Add channel_id to messages table
+    alter table(:messages) do
+      add :channel_id, references(:channels, on_delete: :delete_all)
+    end
+
+    create index(:messages, [:channel_id])
   end
 end
