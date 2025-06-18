@@ -87,6 +87,12 @@ defmodule EximWeb.ChatLive do
     end
   end
 
+  def handle_event("validate", %{"message" => message_params}, socket) do
+    changeset = Messages.change_message(%{}, message_params)
+    form = to_form(changeset, as: "message")
+    {:noreply, assign(socket, form: form)}
+  end
+
   def handle_event("send_message", %{"message" => %{"content" => content}}, socket) do
     user = socket.assigns.current_user
     channel = socket.assigns.current_channel
@@ -105,7 +111,14 @@ defmodule EximWeb.ChatLive do
         message_with_from = Exim.Repo.preload(message, :from)
         EximWeb.Endpoint.broadcast("channel:#{channel.id}", "new_message", message_with_from)
 
-        {:noreply, assign(socket, form: to_form(%{}, as: "message"))}
+        # Reset form with empty content and clear form state
+        fresh_changeset = Messages.change_message(%{}, %{})
+        empty_form = to_form(fresh_changeset, as: "message")
+
+        {:noreply, 
+         socket
+         |> assign(form: empty_form)
+         |> push_event("focus_input", %{})}
       else
         {:noreply,
          socket
@@ -113,7 +126,10 @@ defmodule EximWeb.ChatLive do
          |> redirect(to: ~p"/channels")}
       end
     else
-      {:noreply, assign(socket, form: to_form(%{}, as: "message"))}
+      # Reset form if content is empty
+      fresh_changeset = Messages.change_message(%{}, %{})
+      empty_form = to_form(fresh_changeset, as: "message")
+      {:noreply, assign(socket, form: empty_form)}
     end
   end
 

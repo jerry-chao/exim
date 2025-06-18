@@ -25,4 +25,8 @@ defmodule Exim.Messages do
   end
 
   def get_message!(id), do: Repo.get!(Message, id)
+
+  def change_message(message \\ %Message{}, attrs) do
+    Message.changeset(message, attrs)
+  end
 end

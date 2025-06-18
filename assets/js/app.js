@@ -52,6 +52,58 @@ Hooks.AutoDismissFlash = {
   }
 };
 
+Hooks.AutoScroll = {
+  mounted() {
+    this.scrollToBottom();
+  },
+  updated() {
+    this.scrollToBottom();
+  },
+  scrollToBottom() {
+    // Small delay to ensure DOM is updated
+    setTimeout(() => {
+      this.el.scrollTop = this.el.scrollHeight;
+    }, 50);
+  }
+};
+
+Hooks.MessageForm = {
+  mounted() {
+    this.handleEvent("focus_input", () => {
+      const input = this.el.querySelector("#message-input");
+      if (input) {
+        input.focus();
+      }
+    });
+    
+    // Add Enter key support for sending messages
+    const input = this.el.querySelector("#message-input");
+    if (input) {
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          const form = this.el.querySelector("form");
+          const submitButton = this.el.querySelector("button[type='submit']");
+          
+          // Only submit if input has content and button is not disabled
+          if (form && input.value.trim() !== "" && submitButton && !submitButton.disabled) {
+            form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+          }
+        }
+      });
+    }
+  },
+  updated() {
+    // Focus input after form reset (when message is sent)
+    const input = this.el.querySelector("#message-input");
+    if (input && input.value === "") {
+      setTimeout(() => {
+        input.focus();
+      }, 100);
+    }
+  }
+};
+
 let liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: { _csrf_token: csrfToken },

@@ -67,7 +67,7 @@
       <% end %>
     </div>
   </div>
-  
+
 <!-- Chat Area -->
   <div class="flex-1 flex flex-col h-full">
     <%= if @current_channel do %>
@@ -89,9 +89,9 @@
         </div>
       </div>
     <% end %>
-    
+
 <!-- Messages -->
-    <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50" id="messages">
+    <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50" id="messages" phx-hook="AutoScroll">
       <%= if @current_channel do %>
         <%= if @messages == [] do %>
           <div class="text-center py-8 text-gray-500">
@@ -114,19 +114,61 @@
           </div>
         <% else %>
           <%= for message <- @messages do %>
-            <div id={"message-#{message.id}"} class="flex items-start space-x-4">
-              <div class="flex-1">
-                <div class="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow duration-200">
+            <div id={"message-#{message.id}"} class={
+              if message.from_id == @current_user.id do
+                "flex items-start space-x-4 justify-end"
+              else
+                "flex items-start space-x-4 justify-start"
+              end
+            }>
+              <div class={
+                if message.from_id == @current_user.id do
+                  "max-w-md"
+                else
+                  "max-w-md"
+                end
+              }>
+                <div class={
+                  if message.from_id == @current_user.id do
+                    "bg-blue-500 text-white rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow duration-200"
+                  else
+                    "bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow duration-200"
+                  end
+                }>
                   <div class="flex items-center space-x-2 mb-2">
-                    <p class="font-semibold text-sm text-gray-700">
+                    <p class={
+                      if message.from_id == @current_user.id do
+                        "font-semibold text-sm text-blue-100"
+                      else
+                        "font-semibold text-sm text-gray-700"
+                      end
+                    }>
                       {message.from && message.from.username}
                     </p>
-                    <span class="text-gray-400">•</span>
-                    <p class="text-xs text-gray-500">
+                    <span class={
+                      if message.from_id == @current_user.id do
+                        "text-blue-200"
+                      else
+                        "text-gray-400"
+                      end
+                    }>•</span>
+                    <p class={
+                      if message.from_id == @current_user.id do
+                        "text-xs text-blue-200"
+                      else
+                        "text-xs text-gray-500"
+                      end
+                    }>
                       {Calendar.strftime(message.inserted_at, "%Y-%m-%d %H:%M:%S")}
                     </p>
                   </div>
-                  <p class="text-gray-800 text-lg leading-relaxed">{message.content}</p>
+                  <p class={
+                    if message.from_id == @current_user.id do
+                      "text-white text-lg leading-relaxed"
+                    else
+                      "text-gray-800 text-lg leading-relaxed"
+                    end
+                  }>{message.content}</p>
                 </div>
               </div>
             </div>
@@ -168,30 +210,33 @@
         </div>
       <% end %>
     </div>
-    
+
 <!-- Message Input -->
     <div class="border-t border-gray-200 bg-white p-6 shadow-sm">
       <%= if @current_channel do %>
-        <.simple_form for={@form} id="message-form" phx-submit="send_message" class="w-full">
+        <.simple_form for={@form} id="message-form" phx-submit="send_message" phx-change="validate" class="w-full" phx-hook="MessageForm">
           <div class="flex items-center justify-between gap-4 w-full bg-white rounded-3xl border border-gray-200 focus-within:border-blue-500 transition-colors duration-200 shadow-sm hover:shadow-md px-4">
             <input
               type="text"
               name="message[content]"
+              id="message-input"
+              value={Phoenix.HTML.Form.input_value(@form, :content) || ""}
               placeholder={"Type your message in #{@current_channel.name}..."}
               class="flex-1 border-0 rounded-3xl text-lg py-4 px-6 min-h-[60px] focus:ring-0 focus:outline-none bg-transparent"
+              autocomplete="off"
             />
             <.button
               type="submit"
-              phx-disable-with="Sending..."
-              class="flex items-center justify-center w-12 h-12 rounded-full bg-blue-500 text-white hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200"
+              phx-disable-with="<div class='flex items-center gap-2'><svg class='animate-spin h-4 w-4' fill='none' viewBox='0 0 24 24'><circle class='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' stroke-width='4'></circle><path class='opacity-75' fill='currentColor' d='m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'></path></svg>发送中...</div>"
+              class="flex items-center justify-center w-14 h-14 rounded-full bg-blue-500 text-white hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
-                width="24"
-                height="24"
+                width="18"
+                height="18"
                 fill="currentColor"
-                class="ml-0.5"
+                class="transform rotate-45 -translate-y-0.5 translate-x-0.5"
               >
                 <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
               </svg>
