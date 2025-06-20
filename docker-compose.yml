@@ -3,7 +3,6 @@ services:
   kafka:
     container_name: kafka
     image: bitnami/kafka:3.9.0
-    platform: linux/x86_64
     ports:
       - "9092:9092"
     environment:

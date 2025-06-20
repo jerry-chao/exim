@@ -32,15 +32,11 @@ defmodule EximWeb.Router do
   scope "/", EximWeb do
     pipe_through :browser
     live "/", LoginLive, :index
-    live "/register", RegistrationLive, :new
-    live "/login", LoginLive, :new
     live "/chat", ChatLive, :index
     live "/channels", ChannelManagerLive, :index
 
-    # Session management routes
-    get "/users/sessions", UserSessionController, :token_login
-    delete "/users/sessions", UserSessionController, :delete
-    delete "/users/log_out", UserSessionController, :delete
+    live "/users/login", LoginLive, :new
+    live "/users/register", RegistrationLive, :new
   end
 
   # API routes for token management

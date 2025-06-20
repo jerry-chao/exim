@@ -24,7 +24,7 @@ defmodule EximWeb.LoginLive do
       <.header class="text-center">
         Sign in to your account
         <:actions>
-          <.link patch={~p"/register"} class="font-semibold text-brand hover:underline">
+          <.link patch={~p"/users/register"} class="font-semibold text-brand hover:underline">
             Register
           </.link>
         </:actions>
@@ -46,11 +46,7 @@ defmodule EximWeb.LoginLive do
       </.simple_form>
 
       <div class="text-center mt-4">
-        <.link
-          href={~p"/users/sessions"}
-          method="delete"
-          class="text-sm text-gray-600 hover:text-brand"
-        >
+        <.link href={~p"/users/login"} method="delete" class="text-sm text-gray-600 hover:text-brand">
           Sign out (if already logged in)
         </.link>
       </div>

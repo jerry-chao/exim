@@ -13,7 +13,7 @@ defmodule EximWeb.RegistrationLive do
         Register Account
         <:subtitle>Already registered?</:subtitle>
         <:actions>
-          <.link patch={~p"/login"} class="font-semibold text-brand hover:underline">
+          <.link patch={~p"/users/login"} class="font-semibold text-brand hover:underline">
             Sign in
           </.link>
         </:actions>
@@ -49,7 +49,7 @@ defmodule EximWeb.RegistrationLive do
         {:noreply,
          socket
          |> put_flash(:info, "Account created successfully!")
-         |> redirect(to: ~p"/login")}
+         |> redirect(to: ~p"/users/login")}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, form: to_form(changeset, as: "user"))}
