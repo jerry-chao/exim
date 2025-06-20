@@ -67,7 +67,7 @@
       <% end %>
     </div>
   </div>
-
+  
 <!-- Chat Area -->
   <div class="flex-1 flex flex-col h-full">
     <%= if @current_channel do %>
@@ -89,9 +89,13 @@
         </div>
       </div>
     <% end %>
-
+    
 <!-- Messages -->
-    <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50" id="messages" phx-hook="AutoScroll">
+    <div
+      class="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50"
+      id="messages"
+      phx-hook="AutoScroll"
+    >
       <%= if @current_channel do %>
         <%= if @messages == [] do %>
           <div class="text-center py-8 text-gray-500">
@@ -114,13 +118,16 @@
           </div>
         <% else %>
           <%= for message <- @messages do %>
-            <div id={"message-#{message.id}"} class={
-              if message.from_id == @current_user.id do
-                "flex items-start space-x-4 justify-end"
-              else
-                "flex items-start space-x-4 justify-start"
-              end
-            }>
+            <div
+              id={"message-#{message.id}"}
+              class={
+                if message.from_id == @current_user.id do
+                  "flex items-start space-x-4 justify-end"
+                else
+                  "flex items-start space-x-4 justify-start"
+                end
+              }
+            >
               <div class={
                 if message.from_id == @current_user.id do
                   "max-w-md"
@@ -151,7 +158,9 @@
                       else
                         "text-gray-400"
                       end
-                    }>•</span>
+                    }>
+                      •
+                    </span>
                     <p class={
                       if message.from_id == @current_user.id do
                         "text-xs text-blue-200"
@@ -168,7 +177,9 @@
                     else
                       "text-gray-800 text-lg leading-relaxed"
                     end
-                  }>{message.content}</p>
+                  }>
+                    {message.content}
+                  </p>
                 </div>
               </div>
             </div>
@@ -210,11 +221,18 @@
         </div>
       <% end %>
     </div>
-
+    
 <!-- Message Input -->
     <div class="border-t border-gray-200 bg-white p-6 shadow-sm">
       <%= if @current_channel do %>
-        <.simple_form for={@form} id="message-form" phx-submit="send_message" phx-change="validate" class="w-full" phx-hook="MessageForm">
+        <.simple_form
+          for={@form}
+          id="message-form"
+          phx-submit="send_message"
+          phx-change="validate"
+          class="w-full"
+          phx-hook="MessageForm"
+        >
           <div class="flex items-center justify-between gap-4 w-full bg-white rounded-3xl border border-gray-200 focus-within:border-blue-500 transition-colors duration-200 shadow-sm hover:shadow-md px-4">
             <input
               type="text"
