@@ -5,124 +5,8 @@ defmodule Exim.Accounts do
 
   import Ecto.Query, warn: false
   alias Exim.Repo
-  alias Exim.User
 
-  # UserToken schema for session handling
-  defmodule UserToken do
-    use Ecto.Schema
-    import Ecto.Query
-
-    @hash_algorithm :sha256
-    @rand_size 32
-
-    # It is very important to keep the reset password token expiry short,
-    # since someone with access to the email may take over the account.
-    @reset_password_validity_in_days 1
-    @confirm_validity_in_days 7
-    @session_validity_in_days 60
-
-    schema "users_tokens" do
-      field :token, :binary
-      field :context, :string
-      belongs_to :user, User
-
-      timestamps(updated_at: false)
-    end
-
-    @doc """
-    Generates a token that will be stored in a signed place,
-    such as session or cookie. As they are signed, those
-    tokens do not need to be hashed.
-
-    The reason why we store session tokens in the database, even
-    though Phoenix already provides a session cookie, is because
-    Phoenix' default session cookies are not persisted, they are
-    simply signed and potentially encrypted. This means they are
-    valid indefinitely, unless you change the signing/encryption
-    salt.
-
-    Therefore, we store a token in the database to ensure that even
-    if the salt changes, we can still validate the token in the
-    database.
-    """
-    def build_session_token(user) do
-      token = :crypto.strong_rand_bytes(@rand_size)
-      {token, %UserToken{token: token, context: "session", user_id: user.id}}
-    end
-
-    @doc """
-    Checks if the token is valid and returns its underlying lookup query.
-
-    The query returns the user found by the token, if any.
-    """
-    def verify_session_token_query(token) do
-      query =
-        from token in token_and_context_query(token, "session"),
-          join: user in assoc(token, :user),
-          where: token.inserted_at > ago(@session_validity_in_days, "day"),
-          select: user
-
-      {:ok, query}
-    end
-
-    @doc """
-    Builds a token with a hashed counter used for user confirmation.
-    """
-    def build_email_token(user, context) do
-      build_hashed_token(user, context, user.email)
-    end
-
-    defp build_hashed_token(user, context, _sent_to) do
-      token = :crypto.strong_rand_bytes(@rand_size)
-      hashed_token = :crypto.hash(@hash_algorithm, token)
-
-      {Base.url_encode64(token, padding: false),
-       %UserToken{
-         token: hashed_token,
-         context: context,
-         user_id: user.id
-       }}
-    end
-
-    @doc """
-    Verifies the token for user confirmation and reset password.
-    """
-    def verify_email_token_query(token, context) do
-      case Base.url_decode64(token, padding: false) do
-        {:ok, decoded_token} ->
-          hashed_token = :crypto.hash(@hash_algorithm, decoded_token)
-          days = days_for_context(context)
-
-          query =
-            from token in token_and_context_query(hashed_token, context),
-              join: user in assoc(token, :user),
-              where: token.inserted_at > ago(^days, "day"),
-              select: user
-
-          {:ok, query}
-
-        :error ->
-          :error
-      end
-    end
-
-    defp days_for_context("confirm"), do: @confirm_validity_in_days
-    defp days_for_context("reset_password"), do: @reset_password_validity_in_days
-
-    @doc """
-    Returns the token struct for the given token value and context.
-    """
-    def token_and_context_query(token, context) do
-      from UserToken, where: [token: ^token, context: ^context]
-    end
-
-    @doc """
-    Gets all tokens for the given user.
-    """
-    def user_and_contexts_query(user, contexts) do
-      from t in UserToken, where: t.user_id == ^user.id and t.context in ^contexts
-    end
-  end
+  alias Exim.Accounts.{User, UserToken, UserNotifier}
 
   ## Database getters
 
@@ -140,6 +24,24 @@ defmodule Exim.Accounts do
   """
   def get_user_by_email(email) when is_binary(email) do
     Repo.get_by(User, email: email)
+  end
+
+  @doc """
+  Gets a user by email and password.
+
+  ## Examples
+
+      iex> get_user_by_email_and_password("foo@example.com", "correct_password")
+      %User{}
+
+      iex> get_user_by_email_and_password("foo@example.com", "invalid_password")
+      nil
+
+  """
+  def get_user_by_email_and_password(email, password)
+      when is_binary(email) and is_binary(password) do
+    user = Repo.get_by(User, email: email)
+    if User.valid_password?(user, password), do: user
   end
 
   @doc """
@@ -172,23 +74,148 @@ defmodule Exim.Accounts do
       {:error, %Ecto.Changeset{}}
 
   """
-  def register_user(attrs \\ %{}) do
+  def register_user(attrs) do
     %User{}
-    |> User.changeset(attrs)
+    |> User.registration_changeset(attrs)
     |> Repo.insert()
   end
 
   @doc """
-  Gets a user by email and password.
-  """
-  def get_user_by_email_and_password(email, password)
-      when is_binary(email) and is_binary(password) do
-    user = get_user_by_email(email)
+  Returns an `%Ecto.Changeset{}` for tracking user changes.
 
-    if user && User.valid_password?(user, password) do
-      user
+  ## Examples
+
+      iex> change_user_registration(user)
+      %Ecto.Changeset{data: %User{}}
+
+  """
+  def change_user_registration(%User{} = user, attrs \\ %{}) do
+    User.registration_changeset(user, attrs, hash_password: false, validate_email: false)
+  end
+
+  ## Settings
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for changing the user email.
+
+  ## Examples
+
+      iex> change_user_email(user)
+      %Ecto.Changeset{data: %User{}}
+
+  """
+  def change_user_email(user, attrs \\ %{}) do
+    User.email_changeset(user, attrs, validate_email: false)
+  end
+
+  @doc """
+  Emulates that the email will change without actually changing
+  it in the database.
+
+  ## Examples
+
+      iex> apply_user_email(user, "valid password", %{email: ...})
+      {:ok, %User{}}
+
+      iex> apply_user_email(user, "invalid password", %{email: ...})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def apply_user_email(user, password, attrs) do
+    user
+    |> User.email_changeset(attrs)
+    |> User.validate_current_password(password)
+    |> Ecto.Changeset.apply_action(:update)
+  end
+
+  @doc """
+  Updates the user email using the given token.
+
+  If the token matches, the user email is updated and the token is deleted.
+  The confirmed_at date is also updated to the current time.
+  """
+  def update_user_email(user, token) do
+    context = "change:#{user.email}"
+
+    with {:ok, query} <- UserToken.verify_change_email_token_query(token, context),
+         %UserToken{sent_to: email} <- Repo.one(query),
+         {:ok, _} <- Repo.transaction(user_email_multi(user, email, context)) do
+      :ok
+    else
+      _ -> :error
     end
   end
+
+  defp user_email_multi(user, email, context) do
+    changeset =
+      user
+      |> User.email_changeset(%{email: email})
+      |> User.confirm_changeset()
+
+    Ecto.Multi.new()
+    |> Ecto.Multi.update(:user, changeset)
+    |> Ecto.Multi.delete_all(:tokens, UserToken.by_user_and_contexts_query(user, [context]))
+  end
+
+  @doc ~S"""
+  Delivers the update email instructions to the given user.
+
+  ## Examples
+
+      iex> deliver_user_update_email_instructions(user, current_email, &url(~p"/users/settings/confirm_email/#{&1}"))
+      {:ok, %{to: ..., body: ...}}
+
+  """
+  def deliver_user_update_email_instructions(%User{} = user, current_email, update_email_url_fun)
+      when is_function(update_email_url_fun, 1) do
+    {encoded_token, user_token} = UserToken.build_email_token(user, "change:#{current_email}")
+
+    Repo.insert!(user_token)
+    UserNotifier.deliver_update_email_instructions(user, update_email_url_fun.(encoded_token))
+  end
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for changing the user password.
+
+  ## Examples
+
+      iex> change_user_password(user)
+      %Ecto.Changeset{data: %User{}}
+
+  """
+  def change_user_password(user, attrs \\ %{}) do
+    User.password_changeset(user, attrs, hash_password: false)
+  end
+
+  @doc """
+  Updates the user password.
+
+  ## Examples
+
+      iex> update_user_password(user, "valid password", %{password: ...})
+      {:ok, %User{}}
+
+      iex> update_user_password(user, "invalid password", %{password: ...})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_user_password(user, password, attrs) do
+    changeset =
+      user
+      |> User.password_changeset(attrs)
+      |> User.validate_current_password(password)
+
+    Ecto.Multi.new()
+    |> Ecto.Multi.update(:user, changeset)
+    |> Ecto.Multi.delete_all(:tokens, UserToken.by_user_and_contexts_query(user, :all))
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{user: user}} -> {:ok, user}
+      {:error, :user, changeset, _} -> {:error, changeset}
+    end
+  end
+
+  ## Session
 
   @doc """
   Generates a session token.
@@ -211,40 +238,40 @@ defmodule Exim.Accounts do
   Deletes the signed token with the given context.
   """
   def delete_user_session_token(token) do
-    Repo.delete_all(UserToken.token_and_context_query(token, "session"))
+    Repo.delete_all(UserToken.by_token_and_context_query(token, "session"))
     :ok
   end
 
-  @doc """
-  Updates the user's password.
+  ## Confirmation
+
+  @doc ~S"""
+  Delivers the confirmation email instructions to the given user.
 
   ## Examples
 
-      iex> update_user_password(user, "current password", %{password: "new password"})
-      {:ok, %User{}}
+      iex> deliver_user_confirmation_instructions(user, &url(~p"/users/confirm/#{&1}"))
+      {:ok, %{to: ..., body: ...}}
 
-      iex> update_user_password(user, "invalid", %{password: "new password"})
-      {:error, %Ecto.Changeset{}}
+      iex> deliver_user_confirmation_instructions(confirmed_user, &url(~p"/users/confirm/#{&1}"))
+      {:error, :already_confirmed}
+
   """
-  def update_user_password(user, current_password, attrs) do
-    changeset =
-      user
-      |> User.password_changeset(attrs)
-
-    with {:ok, _} <- User.validate_current_password(user, current_password) do
-      Ecto.Multi.new()
-      |> Ecto.Multi.update(:user, changeset)
-      |> Ecto.Multi.delete_all(:tokens, UserToken.user_and_contexts_query(user, ["session"]))
-      |> Repo.transaction()
-      |> case do
-        {:ok, %{user: user}} -> {:ok, user}
-        {:error, :user, changeset, _} -> {:error, changeset}
-      end
+  def deliver_user_confirmation_instructions(%User{} = user, confirmation_url_fun)
+      when is_function(confirmation_url_fun, 1) do
+    if user.confirmed_at do
+      {:error, :already_confirmed}
+    else
+      {encoded_token, user_token} = UserToken.build_email_token(user, "confirm")
+      Repo.insert!(user_token)
+      UserNotifier.deliver_confirmation_instructions(user, confirmation_url_fun.(encoded_token))
     end
   end
 
   @doc """
-  Confirms a user by token.
+  Confirms a user by the given token.
+
+  If the token matches, the user account is marked as confirmed
+  and the token is deleted.
   """
   def confirm_user(token) do
     with {:ok, query} <- UserToken.verify_email_token_query(token, "confirm"),
@@ -259,25 +286,38 @@ defmodule Exim.Accounts do
   defp confirm_user_multi(user) do
     Ecto.Multi.new()
     |> Ecto.Multi.update(:user, User.confirm_changeset(user))
-    |> Ecto.Multi.delete_all(:tokens, UserToken.user_and_contexts_query(user, ["confirm"]))
+    |> Ecto.Multi.delete_all(:tokens, UserToken.by_user_and_contexts_query(user, ["confirm"]))
   end
 
-  @doc """
-  Resets the user password using a token.
+  ## Reset password
+
+  @doc ~S"""
+  Delivers the reset password email to the given user.
+
+  ## Examples
+
+      iex> deliver_user_reset_password_instructions(user, &url(~p"/users/reset_password/#{&1}"))
+      {:ok, %{to: ..., body: ...}}
+
   """
-  def reset_user_password(user, attrs) do
-    Ecto.Multi.new()
-    |> Ecto.Multi.update(:user, User.password_changeset(user, attrs))
-    |> Ecto.Multi.delete_all(:tokens, UserToken.user_and_contexts_query(user, ["reset_password"]))
-    |> Repo.transaction()
-    |> case do
-      {:ok, %{user: user}} -> {:ok, user}
-      {:error, :user, changeset, _} -> {:error, changeset}
-    end
+  def deliver_user_reset_password_instructions(%User{} = user, reset_password_url_fun)
+      when is_function(reset_password_url_fun, 1) do
+    {encoded_token, user_token} = UserToken.build_email_token(user, "reset_password")
+    Repo.insert!(user_token)
+    UserNotifier.deliver_reset_password_instructions(user, reset_password_url_fun.(encoded_token))
   end
 
   @doc """
   Gets the user by reset password token.
+
+  ## Examples
+
+      iex> get_user_by_reset_password_token("validtoken")
+      %User{}
+
+      iex> get_user_by_reset_password_token("invalidtoken")
+      nil
+
   """
   def get_user_by_reset_password_token(token) do
     with {:ok, query} <- UserToken.verify_email_token_query(token, "reset_password"),
@@ -289,99 +329,25 @@ defmodule Exim.Accounts do
   end
 
   @doc """
-  Delivers instructions to reset a user password.
-  """
-  def deliver_user_reset_password_instructions(%User{} = user, reset_url_fun) do
-    {encoded_token, user_token} = UserToken.build_email_token(user, "reset_password")
-    Repo.insert!(user_token)
-    %{to: user.email, url: reset_url_fun.(encoded_token), user: user}
-  end
-
-  @doc """
-  Returns an `%Ecto.Changeset{}` for tracking user changes.
+  Resets the user password.
 
   ## Examples
 
-      iex> change_user_registration(user)
-      %Ecto.Changeset{data: %User{}}
-
-  """
-  def change_user_registration(%User{} = user, attrs \\ %{}) do
-    User.changeset(user, attrs)
-  end
-
-  @doc """
-  Returns a changeset for changing the user's email.
-
-  ## Examples
-
-      iex> change_user_email(user)
-      %Ecto.Changeset{data: %User{}}
-
-  """
-  def change_user_email(%User{} = user, attrs \\ %{}) do
-    User.email_changeset(user, attrs)
-  end
-
-  @doc """
-  Applies changes to the user's email.
-
-  ## Examples
-
-      iex> apply_user_email(user, %{email: "new@example.com"})
-      %Ecto.Changeset{data: %User{}}
-
-  """
-  def apply_user_email(%User{} = user, user_params) do
-    User.email_changeset(user, user_params) |> Repo.update()
-  end
-
-  @doc """
-  Returns a changeset for changing the user's password.
-
-  ## Examples
-
-      iex> change_user_password(user)
-      %Ecto.Changeset{data: %User{}}
-
-  """
-  def change_user_password(%User{} = user, attrs \\ %{}) do
-    User.password_changeset(user, attrs)
-  end
-
-  @doc """
-  Authenticates a user by email and password.
-
-  ## Examples
-
-      iex> authenticate_user("foo@example.com", "correct_password")
+      iex> reset_user_password(user, %{password: "new long password", password_confirmation: "new long password"})
       {:ok, %User{}}
 
-      iex> authenticate_user("foo@example.com", "invalid_password")
-      {:error, :unauthorized}
-
-      iex> authenticate_user("unknown@example.com", "password")
-      {:error, :not_found}
+      iex> reset_user_password(user, %{password: "valid", password_confirmation: "not the same"})
+      {:error, %Ecto.Changeset{}}
 
   """
-  def authenticate_user(email, password) do
-    user = Repo.get_by(User, email: email)
-
-    cond do
-      user && User.valid_password?(user, password) ->
-        {:ok, user}
-
-      user ->
-        {:error, :unauthorized}
-
-      true ->
-        Bcrypt.no_user_verify()
-        {:error, :not_found}
+  def reset_user_password(user, attrs) do
+    Ecto.Multi.new()
+    |> Ecto.Multi.update(:user, User.password_changeset(user, attrs))
+    |> Ecto.Multi.delete_all(:tokens, UserToken.by_user_and_contexts_query(user, :all))
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{user: user}} -> {:ok, user}
+      {:error, :user, changeset, _} -> {:error, changeset}
     end
-  end
-
-  def get_user_channels(user_id) do
-    user = Repo.get!(User, user_id) |> Repo.preload(:channels)
-    user.channels
   end
 end

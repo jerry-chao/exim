@@ -16,177 +16,29 @@
 //
 
 // Include phoenix_html to handle method=PUT/DELETE in forms and buttons.
-import "phoenix_html";
+import "phoenix_html"
 // Establish Phoenix Socket and LiveView configuration.
-import { Socket } from "phoenix";
-import { LiveSocket } from "phoenix_live_view";
-import topbar from "../vendor/topbar";
-// import "./user_socket"
+import {Socket} from "phoenix"
+import {LiveSocket} from "phoenix_live_view"
+import topbar from "../vendor/topbar"
 
-let csrfToken = document
-  .querySelector("meta[name='csrf-token']")
-  .getAttribute("content");
-// Hook for auto-dismissing flash messages
-let Hooks = {};
-Hooks.AutoDismissFlash = {
-  mounted() {
-    // Auto-dismiss after 1 second
-    setTimeout(() => {
-      if (this.el) {
-        this.el.style.transition = 'opacity 0.3s ease-out';
-        this.el.style.opacity = '0';
-        
-        // Remove from DOM after fade out
-        setTimeout(() => {
-          if (this.el && this.el.parentNode) {
-            // Trigger the Phoenix LiveView clear flash event
-            if (this.el.hasAttribute('phx-click')) {
-              this.el.click();
-            } else {
-              this.el.remove();
-            }
-          }
-        }, 300);
-      }
-    }, 1000);
-  }
-};
-
-Hooks.AutoScroll = {
-  mounted() {
-    this.scrollToBottom();
-  },
-  updated() {
-    this.scrollToBottom();
-  },
-  scrollToBottom() {
-    // Small delay to ensure DOM is updated
-    setTimeout(() => {
-      this.el.scrollTop = this.el.scrollHeight;
-    }, 50);
-  }
-};
-
-Hooks.MessageForm = {
-  mounted() {
-    this.handleEvent("focus_input", () => {
-      const input = this.el.querySelector("#message-input");
-      if (input) {
-        input.focus();
-      }
-    });
-    
-    // Add Enter key support for sending messages
-    const input = this.el.querySelector("#message-input");
-    if (input) {
-      input.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-          e.preventDefault();
-          const form = this.el.querySelector("form");
-          const submitButton = this.el.querySelector("button[type='submit']");
-          
-          // Only submit if input has content and button is not disabled
-          if (form && input.value.trim() !== "" && submitButton && !submitButton.disabled) {
-            form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
-          }
-        }
-      });
-    }
-  },
-  updated() {
-    // Focus input after form reset (when message is sent)
-    const input = this.el.querySelector("#message-input");
-    if (input && input.value === "") {
-      setTimeout(() => {
-        input.focus();
-      }, 100);
-    }
-  }
-};
-
+let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 let liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
-  params: { _csrf_token: csrfToken },
-  hooks: Hooks,
-});
+  params: {_csrf_token: csrfToken}
+})
 
 // Show progress bar on live navigation and form submits
-topbar.config({ barColors: { 0: "#29d" }, shadowColor: "rgba(0, 0, 0, .3)" });
-window.addEventListener("phx:page-loading-start", (_info) => topbar.show(300));
-window.addEventListener("phx:page-loading-stop", (_info) => topbar.hide());
+topbar.config({barColors: {0: "#29d"}, shadowColor: "rgba(0, 0, 0, .3)"})
+window.addEventListener("phx:page-loading-start", _info => topbar.show(300))
+window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
 
 // connect if there are any LiveViews on the page
-liveSocket.connect();
-
-// Flash message auto-dismiss functionality
-function autoDismissFlashMessages() {
-  const flashMessages = document.querySelectorAll('[phx-click="lv:clear-flash"]');
-  
-  flashMessages.forEach((flash) => {
-    // Skip if already processed
-    if (flash.dataset.processed === 'true') return;
-    flash.dataset.processed = 'true';
-    
-    // Auto-dismiss after 1 second (1000ms)
-    setTimeout(() => {
-      if (flash && flash.parentNode) {
-        flash.style.transition = 'opacity 0.3s ease-out';
-        flash.style.opacity = '0';
-        
-        // Remove from DOM after fade out
-        setTimeout(() => {
-          if (flash && flash.parentNode) {
-            // Try to trigger the Phoenix LiveView clear flash event
-            if (flash.getAttribute('phx-click')) {
-              flash.click();
-            } else {
-              flash.remove();
-            }
-          }
-        }, 300);
-      }
-    }, 1000);
-  });
-}
-
-// Also handle flash messages with different selectors
-function autoDismissAllFlashMessages() {
-  // Handle Phoenix LiveView flash messages
-  autoDismissFlashMessages();
-  
-  // Handle other flash message formats
-  const otherFlashMessages = document.querySelectorAll('[data-flash], .flash, .alert');
-  
-  otherFlashMessages.forEach((flash) => {
-    if (flash.dataset.processed === 'true') return;
-    flash.dataset.processed = 'true';
-    
-    setTimeout(() => {
-      if (flash && flash.parentNode) {
-        flash.style.transition = 'opacity 0.3s ease-out';
-        flash.style.opacity = '0';
-        
-        setTimeout(() => {
-          if (flash && flash.parentNode) {
-            flash.remove();
-          }
-        }, 300);
-      }
-    }, 1000);
-  });
-}
-
-// Run auto-dismiss on page load
-document.addEventListener('DOMContentLoaded', autoDismissAllFlashMessages);
-
-// Run auto-dismiss when LiveView updates the page
-window.addEventListener('phx:page-loading-stop', autoDismissAllFlashMessages);
-
-// Listen for LiveView flash events
-window.addEventListener('phx:flash-added', autoDismissAllFlashMessages);
+liveSocket.connect()
 
 // expose liveSocket on window for web console debug logs and latency simulation:
 // >> liveSocket.enableDebug()
 // >> liveSocket.enableLatencySim(1000)  // enabled for duration of browser session
 // >> liveSocket.disableLatencySim()
-window.liveSocket = liveSocket;
+window.liveSocket = liveSocket
+

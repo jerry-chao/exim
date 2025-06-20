@@ -5,7 +5,6 @@ defmodule EximWeb.UserAuth do
   import Phoenix.Controller
 
   alias Exim.Accounts
-  require Logger
 
   # Make the remember me cookie valid for 60 days.
   # If you want bump or reduce this value, also change
@@ -94,7 +93,6 @@ defmodule EximWeb.UserAuth do
   def fetch_current_user(conn, _opts) do
     {user_token, conn} = ensure_user_token(conn)
     user = user_token && Accounts.get_user_by_session_token(user_token)
-    Logger.info("user: #{inspect(user)}, user_token: #{inspect(user_token)}")
     assign(conn, :current_user, user)
   end
 
@@ -160,7 +158,7 @@ defmodule EximWeb.UserAuth do
       socket =
         socket
         |> Phoenix.LiveView.put_flash(:error, "You must log in to access this page.")
-        |> Phoenix.LiveView.redirect(to: ~p"/users/login")
+        |> Phoenix.LiveView.redirect(to: ~p"/users/log_in")
 
       {:halt, socket}
     end
@@ -210,7 +208,7 @@ defmodule EximWeb.UserAuth do
       conn
       |> put_flash(:error, "You must log in to access this page.")
       |> maybe_store_return_to()
-      |> redirect(to: ~p"/users/login")
+      |> redirect(to: ~p"/users/log_in")
       |> halt()
     end
   end

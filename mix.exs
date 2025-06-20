@@ -41,7 +41,6 @@ defmodule Exim.MixProject do
       {:phoenix_live_reload, "~> 1.2", only: :dev},
       {:phoenix_live_view, "~> 1.0"},
       {:floki, ">= 0.30.0", only: :test},
-      {:phoenix_live_dashboard, "~> 0.8.3"},
       {:esbuild, "~> 0.8", runtime: Mix.env() == :dev},
       {:tailwind, "~> 0.2.0", runtime: Mix.env() == :dev},
       {:heroicons,
@@ -55,14 +54,9 @@ defmodule Exim.MixProject do
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 0.26"},
       {:jason, "~> 1.2"},
-      {:libcluster, "~> 3.5"},
+      {:dns_cluster, "~> 0.1.1"},
       {:bandit, "~> 1.5"},
-      {:swoosh, "~> 1.4"},
-      {:hackney, "~> 1.9"},
-      {:broadway_kafka, "~> 0.4.4"},
-      {:horde, "~> 0.9.0"},
-      {:redix, "~> 1.2"},
-      {:tidewave, "~> 0.1", only: :dev}
+      {:swoosh, "~> 1.19"}
     ]
   end
 

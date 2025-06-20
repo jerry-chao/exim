@@ -20,7 +20,7 @@ config :exim, Exim.Repo,
 # you can enable the server option below.
 config :exim, EximWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
-  secret_key_base: "1PCWsjoI4c/cZwiTdkVlqz9g0P7oIR6BPt3lip54UpEhEnb5nLVI09MDPSheejXl",
+  secret_key_base: "pM4Er/B4ke2q8S6roTGKWyaVcgoHKeVDOYRQ7Le9xP3cnURn2uJLAvN5wF1SKR6c",
   server: false
 
 # Print only warnings and errors during test

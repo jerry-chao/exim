@@ -35,7 +35,3 @@ exim-*.tar
 npm-debug.log
 /assets/node_modules/
 
-# Ignore the mix generated assets
-/priv/static/favicon*
-/priv/static/images/logo*
-/priv/static/robots*

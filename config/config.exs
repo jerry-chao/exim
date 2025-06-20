@@ -20,7 +20,11 @@ config :exim, EximWeb.Endpoint,
     layout: false
   ],
   pubsub_server: Exim.PubSub,
-  live_view: [signing_salt: "mprGRg0H"]
+  live_view: [signing_salt: "mjv1K5zl"]
+
+config :exim, Exim.Mailer, adapter: Swoosh.Adapters.Local
+
+config :swoosh, :api_client, false
 
 # Configure esbuild (the version is required)
 config :esbuild,
@@ -51,8 +55,6 @@ config :logger, :console,
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
-
-config :exim, Exim.Mailer, adapter: Swoosh.Adapters.Local
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
