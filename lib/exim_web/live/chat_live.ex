@@ -118,7 +118,7 @@ defmodule EximWeb.ChatLive do
         EximWeb.Endpoint.broadcast("channel:#{channel.id}", "new_message", message_with_from)
 
         # Reset form with empty content and clear form state
-        fresh_changeset = Messages.change_message(%{}, %{})
+        fresh_changeset = Messages.change_message(%{})
         empty_form = to_form(fresh_changeset, as: "message")
 
         {:noreply,

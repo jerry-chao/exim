@@ -3,6 +3,7 @@ defmodule Exim.Accounts.User do
   import Ecto.Changeset
 
   schema "users" do
+    field :username, :string
     field :email, :string
     field :password, :string, virtual: true, redact: true
     field :hashed_password, :string, redact: true
@@ -37,9 +38,18 @@ defmodule Exim.Accounts.User do
   """
   def registration_changeset(user, attrs, opts \\ []) do
     user
-    |> cast(attrs, [:email, :password])
+    |> cast(attrs, [:username, :email, :password])
+    |> validate_username()
     |> validate_email(opts)
     |> validate_password(opts)
+  end
+
+  defp validate_username(changeset) do
+    changeset
+    |> validate_required([:username])
+    |> validate_length(:username, min: 3, max: 30)
+    |> unsafe_validate_unique(:username, Exim.Repo)
+    |> unique_constraint(:username)
   end
 
   defp validate_email(changeset, opts) do
@@ -89,16 +99,18 @@ defmodule Exim.Accounts.User do
   end
 
   @doc """
-  A user changeset for changing the email.
+  A user changeset for changing the email or username.
 
-  It requires the email to change otherwise an error is added.
+  It requires the email or username to change otherwise an error is added.
   """
   def email_changeset(user, attrs, opts \\ []) do
     user
-    |> cast(attrs, [:email])
+    |> cast(attrs, [:email, :username])
+    |> validate_username()
     |> validate_email(opts)
     |> case do
       %{changes: %{email: _}} = changeset -> changeset
+      %{changes: %{username: _}} = changeset -> changeset
       %{} = changeset -> add_error(changeset, :email, "did not change")
     end
   end
