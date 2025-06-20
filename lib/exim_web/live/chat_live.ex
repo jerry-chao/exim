@@ -88,7 +88,13 @@ defmodule EximWeb.ChatLive do
   end
 
   def handle_event("validate", %{"message" => message_params}, socket) do
-    changeset = Messages.change_message(%{}, message_params)
+    changeset =
+      Messages.change_message(%{
+        content: message_params["content"],
+        from_id: socket.assigns.current_user.id,
+        channel_id: socket.assigns.current_channel.id
+      })
+
     form = to_form(changeset, as: "message")
     {:noreply, assign(socket, form: form)}
   end
@@ -115,7 +121,7 @@ defmodule EximWeb.ChatLive do
         fresh_changeset = Messages.change_message(%{}, %{})
         empty_form = to_form(fresh_changeset, as: "message")
 
-        {:noreply, 
+        {:noreply,
          socket
          |> assign(form: empty_form)
          |> push_event("focus_input", %{})}
