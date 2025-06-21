@@ -22,8 +22,40 @@ import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import topbar from "../vendor/topbar"
 
+// Define Hooks
+let Hooks = {}
+
+// Hook for auto-scrolling messages
+Hooks.AutoScroll = {
+  mounted() {
+    this.scrollToBottom();
+    this.handleEvent("new_message", () => {
+      this.scrollToBottom();
+    });
+  },
+  updated() {
+    this.scrollToBottom();
+  },
+  scrollToBottom() {
+    this.el.scrollTop = this.el.scrollHeight;
+  }
+}
+
+// Hook for message form
+Hooks.MessageForm = {
+  mounted() {
+    this.handleEvent("focus_input", () => {
+      const input = document.getElementById("message-input");
+      if (input) {
+        input.focus();
+      }
+    });
+  }
+}
+
 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 let liveSocket = new LiveSocket("/live", Socket, {
+  hooks: Hooks,
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken}
 })

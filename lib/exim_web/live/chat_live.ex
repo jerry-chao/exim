@@ -121,10 +121,13 @@ defmodule EximWeb.ChatLive do
         fresh_changeset = Messages.change_message(%{})
         empty_form = to_form(fresh_changeset, as: "message")
 
-        {:noreply,
-         socket
-         |> assign(form: empty_form)
-         |> push_event("focus_input", %{})}
+        # Update the socket assigns and focus the input
+        socket =
+          socket
+          |> assign(form: empty_form)
+          |> push_event("focus_input", %{})
+
+        {:noreply, socket}
       else
         {:noreply,
          socket
@@ -133,7 +136,7 @@ defmodule EximWeb.ChatLive do
       end
     else
       # Reset form if content is empty
-      fresh_changeset = Messages.change_message(%{}, %{})
+      fresh_changeset = Messages.change_message(%{})
       empty_form = to_form(fresh_changeset, as: "message")
       {:noreply, assign(socket, form: empty_form)}
     end
