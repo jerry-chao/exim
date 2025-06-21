@@ -7,7 +7,7 @@ defmodule EximWeb.UserSettingsLive do
     ~H"""
     <.header class="text-center">
       Account Settings
-      <:subtitle>Manage your account email address and password settings</:subtitle>
+      <:subtitle>Manage your account username, email address, and password settings</:subtitle>
     </.header>
 
     <div class="space-y-12 divide-y">
@@ -18,6 +18,7 @@ defmodule EximWeb.UserSettingsLive do
           phx-submit="update_email"
           phx-change="validate_email"
         >
+          <.input field={@email_form[:username]} type="text" label="Username" required />
           <.input field={@email_form[:email]} type="email" label="Email" required />
           <.input
             field={@email_form[:current_password]}
@@ -96,6 +97,7 @@ defmodule EximWeb.UserSettingsLive do
       |> assign(:current_password, nil)
       |> assign(:email_form_current_password, nil)
       |> assign(:current_email, user.email)
+      |> assign(:current_username, user.username)
       |> assign(:email_form, to_form(email_changeset))
       |> assign(:password_form, to_form(password_changeset))
       |> assign(:trigger_submit, false)
